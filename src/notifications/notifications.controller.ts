@@ -10,6 +10,13 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { NotificationsService } from './notifications.service';
@@ -31,6 +38,8 @@ import { NotificationResponseDto, NotificationsListDto } from './dto/notificatio
  * All endpoints protected with JwtAuthGuard
  * All modifying endpoints check authorization (owner-only for read/delete)
  */
+@ApiTags('Notifications')
+@ApiBearerAuth('access_token')
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
 export class NotificationsController {
@@ -48,6 +57,16 @@ export class NotificationsController {
    * @returns NotificationsListDto with data array and counts
    */
   @Get()
+  @ApiOperation({ summary: 'Get all notifications for current user' })
+  @ApiResponse({
+    status: 200,
+    description: 'Notifications retrieved successfully',
+    type: NotificationsListDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - invalid or missing JWT token',
+  })
   async getNotifications(
     @CurrentUser() user: any,
   ): Promise<NotificationsListDto> {
@@ -66,6 +85,26 @@ export class NotificationsController {
    * @returns NotificationResponseDto
    */
   @Get(':id')
+  @ApiOperation({ summary: 'Get single notification by ID' })
+  @ApiParam({
+    name: 'id',
+    type: 'string',
+    description: 'Notification ID (UUID)',
+    example: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification retrieved successfully',
+    type: NotificationResponseDto,
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - you are not the owner of this notification',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Notification not found',
+  })
   async getNotificationById(
     @Param('id') notificationId: string,
     @CurrentUser() user: any,
@@ -87,6 +126,25 @@ export class NotificationsController {
    * @returns Updated NotificationResponseDto
    */
   @Patch(':id/read')
+  @ApiOperation({ summary: 'Mark notification as read/unread' })
+  @ApiParam({
+    name: 'id',
+    type: 'string',
+    description: 'Notification ID (UUID)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification updated successfully',
+    type: NotificationResponseDto,
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - you are not the owner of this notification',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Notification not found',
+  })
   async markAsRead(
     @Param('id') notificationId: string,
     @Body() updateDto: UpdateNotificationDto,
@@ -113,6 +171,24 @@ export class NotificationsController {
    */
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete notification' })
+  @ApiParam({
+    name: 'id',
+    type: 'string',
+    description: 'Notification ID (UUID)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification deleted successfully',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - you are not the owner of this notification',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Notification not found',
+  })
   async deleteNotification(
     @Param('id') notificationId: string,
     @CurrentUser() user: any,
@@ -133,6 +209,16 @@ export class NotificationsController {
    */
   @Post('mark-all-read')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Mark all notifications as read' })
+  @ApiResponse({
+    status: 200,
+    description: 'All notifications marked as read',
+    schema: {
+      properties: {
+        updatedCount: { type: 'number', example: 5 },
+      },
+    },
+  })
   async markAllAsRead(
     @CurrentUser() user: any,
   ): Promise<{ updatedCount: number }> {
