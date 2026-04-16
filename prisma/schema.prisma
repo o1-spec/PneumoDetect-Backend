@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  CLINICIAN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum ScanStatus {
+  UPLOADED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum Result {
+  PNEUMONIA
+  NORMAL
+}
+
+enum NotificationType {
+  SCAN
+  SYSTEM
+  USER
+}
+
+model User {
+  id             String         @id @default(uuid())
+  email          String         @unique
+  password       String
+  name           String
+  role           Role           @default(CLINICIAN)
+  specialization String?
+  phone          String?
+  avatarUrl      String?
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  scans          Scan[]
+  notifications  Notification[]
+}
+
+model Patient {
+  id             String         @id @default(uuid())
+  idNumber       String         @unique
+  name           String
+  age            Int
+  gender         Gender
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  scans          Scan[]
+}
+
+model Scan {
+  id             String         @id @default(uuid())
+  imageUrl       String
+  heatmapUrl     String?
+  status         ScanStatus     @default(UPLOADED)
+  result         Result?
+  confidence     Float?
+  modelVersion   String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  patientId      String
+  patient        Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  doctorId       String
+  doctor         User           @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id             String            @id @default(uuid())
+  title          String
+  message        String
+  type           NotificationType
+  read           Boolean           @default(false)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  userId         String
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
