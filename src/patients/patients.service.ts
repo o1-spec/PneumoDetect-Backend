@@ -5,12 +5,16 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { PatientResponseDto } from './dto/patient-response.dto';
 
 @Injectable()
 export class PatientsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   /**
    * Create a new patient
@@ -44,6 +48,19 @@ export class PatientsService {
         gender,
       },
     });
+
+    // Note: In a real system, you'd have a doctorId to notify
+    // For now, we'll create a system notification
+    try {
+      await this.notificationsService.createNotification({
+        userId: 'admin', // This should be the doctor's ID in a real system
+        title: 'Patient Added',
+        message: `New patient ${name} (ID: ${idNumber}) has been added to the system.`,
+        type: 'USER',
+      });
+    } catch (error) {
+      console.error('Failed to create patient notification:', error);
+    }
 
     return new PatientResponseDto(patient);
   }
@@ -143,6 +160,17 @@ export class PatientsService {
       where: { id: patientId },
       data: updateFields,
     });
+
+    try {
+      await this.notificationsService.createNotification({
+        userId: 'admin',
+        title: 'Patient Updated',
+        message: `Patient ${updatedPatient.name} (ID: ${updatedPatient.idNumber}) information has been updated.`,
+        type: 'USER',
+      });
+    } catch (error) {
+      console.error('Failed to create patient update notification:', error);
+    }
 
     return new PatientResponseDto(updatedPatient);
   }

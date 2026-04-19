@@ -74,6 +74,13 @@ export class ScansService {
         },
       });
 
+      await this.notificationsService.createNotification({
+        userId: doctorId,
+        title: 'Scan Uploaded Successfully',
+        message: `X-ray for patient ${patient.name} has been uploaded. Click to process.`,
+        type: 'SCAN',
+      });
+
       return new ScanResponseDto(scan);
     } catch (error) {
       throw new BadRequestException(
@@ -128,7 +135,25 @@ export class ScansService {
       );
     }
 
-    const mockResults = this.generateMockAIResults();
+    await this.notificationsService.createNotification({
+      userId: doctorId,
+      title: 'Scan Processing Started',
+      message: `X-ray for patient ${scan.patient.name} is being analyzed. Please wait...`,
+      type: 'SCAN',
+    });
+
+    let mockResults;
+    try {
+      mockResults = this.generateMockAIResults();
+    } catch (error) {
+      await this.notificationsService.createNotification({
+        userId: doctorId,
+        title: 'Scan Processing Failed',
+        message: `An error occurred while processing the X-ray for patient ${scan.patient.name}. Please try again.`,
+        type: 'SYSTEM',
+      });
+      throw new BadRequestException('Failed to process scan');
+    }
 
     const updatedScan = await this.prisma.scan.update({
       where: { id: scanId },
@@ -160,14 +185,32 @@ export class ScansService {
       },
     });
 
-    // Create notification for the doctor when scan is completed
     try {
-      if (updatedScan.result) {
-        await this.notificationsService.createScanCompletionNotification(
-          scan.doctorId,
-          updatedScan.patient.name,
-          updatedScan.result,
-        );
+      if (updatedScan.result && updatedScan.confidence !== null) {
+        const confidencePercent = (updatedScan.confidence * 100).toFixed(1);
+        
+        if (updatedScan.confidence > 0.90) {
+          await this.notificationsService.createNotification({
+            userId: scan.doctorId,
+            title: 'High Confidence Result',
+            message: `Scan shows ${updatedScan.result} with ${confidencePercent}% confidence for patient ${updatedScan.patient.name}`,
+            type: 'SCAN',
+          });
+        } else if (updatedScan.confidence < 0.70) {
+          await this.notificationsService.createNotification({
+            userId: scan.doctorId,
+            title: 'Low Confidence - Manual Review Recommended',
+            message: `Scan confidence is ${confidencePercent}% for patient ${updatedScan.patient.name}. Please review manually.`,
+            type: 'SYSTEM',
+          });
+        } else {
+          await this.notificationsService.createNotification({
+            userId: scan.doctorId,
+            title: 'Scan Completed',
+            message: `Your scan result is ready for patient ${updatedScan.patient.name}`,
+            type: 'SCAN',
+          });
+        }
       }
     } catch (error) {
       console.error('Failed to create scan completion notification:', error);

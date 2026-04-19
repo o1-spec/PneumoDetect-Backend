@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
@@ -13,6 +14,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
@@ -124,6 +126,13 @@ export class AuthService {
 
     await this.mailService.sendWelcomeEmail(email, updatedUser.name);
 
+    await this.notificationsService.createNotification({
+      userId: updatedUser.id,
+      title: 'Email Verified',
+      message: 'Your email has been successfully verified. Welcome to PneumoDetect!',
+      type: 'USER',
+    });
+
     return {
       message: 'Email verified successfully',
       user: authResponse,
@@ -159,6 +168,56 @@ export class AuthService {
 
     return {
       message: 'OTP sent to email',
+    };
+  }
+
+  logout(): { message: string } {
+    return {
+      message: 'Logged out successfully',
+    };
+  }
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+    confirmPassword: string,
+  ): Promise<{ message: string }> {
+    if (newPassword !== confirmPassword) {
+      throw new BadRequestException('New password and confirm password do not match');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const isPasswordValid = await this.verifyPassword(currentPassword, user.password);
+    if (!isPasswordValid) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    const hashedPassword = await this.hashPassword(newPassword);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        password: hashedPassword,
+      },
+    });
+
+    await this.notificationsService.createNotification({
+      userId: userId,
+      title: 'Password Changed',
+      message: 'Your password has been changed successfully. If this was not you, please contact support.',
+      type: 'SYSTEM',
+    });
+
+    return {
+      message: 'Password changed successfully',
     };
   }
 

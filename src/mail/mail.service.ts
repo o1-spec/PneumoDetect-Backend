@@ -75,4 +75,22 @@ export class MailService {
       throw new Error(`Failed to send email: ${error.message}`);
     }
   }
+
+  /**
+   * Generic mail sender used for contact/support messages.
+   */
+  async sendMail(to: string, subject: string, html: string): Promise<void> {
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to,
+      subject,
+      html,
+    };
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+    } catch (error) {
+      throw new Error(`Failed to send email: ${error.message}`);
+    }
+  }
 }

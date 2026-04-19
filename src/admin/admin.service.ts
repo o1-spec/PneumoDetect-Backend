@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { UserResponseDto } from '../users/dto/user-response.dto';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   /**
    * Get all users (admin only)
@@ -67,6 +71,18 @@ export class AdminService {
         updatedAt: true,
       },
     });
+
+    try {
+      const statusMessage = updateUserStatusDto.isActive ? 'activated' : 'deactivated';
+      await this.notificationsService.createNotification({
+        userId: userId,
+        title: 'Account Status Changed',
+        message: `Your account has been ${statusMessage} by an administrator.`,
+        type: 'SYSTEM',
+      });
+    } catch (error) {
+      console.error('Failed to create status change notification:', error);
+    }
 
     return new UserResponseDto(updatedUser);
   }
