@@ -8,33 +8,15 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
-  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import * as path from 'path';
-import { Response } from 'express';
+import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ScansService } from './scans.service';
 import { CreateScanDto } from './dto/create-scan.dto';
 import { ProcessScanDto } from './dto/process-scan.dto';
 
-// Multer storage configuration for local disk uploads
-const storage = diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, './uploads');
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename: timestamp-randomstring.ext
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    const name = path.basename(file.originalname, ext);
-    cb(null, `${name}-${uniqueSuffix}${ext}`);
-  },
-});
-
-// File filter to only accept image uploads
 const fileFilter = (req, file, cb) => {
   const allowedMimes = ['image/jpeg', 'image/png', 'image/jpg'];
   if (allowedMimes.includes(file.mimetype)) {
@@ -52,21 +34,13 @@ const fileFilter = (req, file, cb) => {
 export class ScansController {
   constructor(private scansService: ScansService) {}
 
-  /**
-   * POST /scans/upload
-   * Upload a chest X-ray image and create a scan record
-   * - Accepts multipart/form-data with 'image' field
-   * - Accepts patientId in body
-   * - Saves image locally in ./uploads directory
-   * - Creates Scan record in database with UPLOADED status
-   */
   @Post('upload')
   @UseInterceptors(
     FileInterceptor('image', {
-      storage,
+      storage: memoryStorage(),
       fileFilter,
       limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB limit
+        fileSize: 10 * 1024 * 1024,
       },
     }),
   )
@@ -79,13 +53,10 @@ export class ScansController {
       throw new BadRequestException('No image file provided');
     }
 
-    // Construct relative path to image
-    const imageUrl = `/uploads/${file.filename}`;
-
-    // Create scan record in database
     const scan = await this.scansService.createScan(
       createScanDto,
-      imageUrl,
+      file.buffer,
+      file.originalname,
       user.id,
     );
 

@@ -7,6 +7,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { CreateScanDto } from './dto/create-scan.dto';
 import { ProcessScanDto } from './dto/process-scan.dto';
 import { ScanResponseDto } from './dto/scan-response.dto';
@@ -17,13 +18,15 @@ import { NotificationsService } from '../notifications/notifications.service';
 export class ScansService {
   constructor(
     private prisma: PrismaService,
+    private cloudinaryService: CloudinaryService,
     @Inject(forwardRef(() => NotificationsService))
     private notificationsService: NotificationsService,
   ) {}
 
   async createScan(
     createScanDto: CreateScanDto,
-    imageUrl: string,
+    fileBuffer: Buffer,
+    fileName: string,
     doctorId: string,
   ): Promise<ScanResponseDto> {
     const { patientId } = createScanDto;
@@ -36,35 +39,47 @@ export class ScansService {
       throw new NotFoundException(`Patient with ID ${patientId} not found`);
     }
 
-    const scan = await this.prisma.scan.create({
-      data: {
-        imageUrl,
-        patientId,
-        doctorId,
-        status: 'UPLOADED',
-      },
-      include: {
-        patient: {
-          select: {
-            id: true,
-            idNumber: true,
-            name: true,
-            age: true,
-            gender: true,
-          },
-        },
-        doctor: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            role: true,
-          },
-        },
-      },
-    });
+    try {
+      const uploadedFile = await this.cloudinaryService.uploadImage(
+        fileBuffer,
+        `${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        'pneumodetect/scans',
+      );
 
-    return new ScanResponseDto(scan);
+      const scan = await this.prisma.scan.create({
+        data: {
+          imageUrl: uploadedFile.secure_url,
+          patientId,
+          doctorId,
+          status: 'UPLOADED',
+        },
+        include: {
+          patient: {
+            select: {
+              id: true,
+              idNumber: true,
+              name: true,
+              age: true,
+              gender: true,
+            },
+          },
+          doctor: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              role: true,
+            },
+          },
+        },
+      });
+
+      return new ScanResponseDto(scan);
+    } catch (error) {
+      throw new BadRequestException(
+        `Failed to upload scan: ${error.message}`,
+      );
+    }
   }
 
   /**
@@ -107,17 +122,14 @@ export class ScansService {
       throw new NotFoundException(`Scan with ID ${scanId} not found`);
     }
 
-    // Check ownership: only doctor who created it or admin can process
     if (userRole !== 'ADMIN' && scan.doctorId !== doctorId) {
       throw new ForbiddenException(
         'You can only process scans you created or you are an admin',
       );
     }
 
-    // Simulate AI processing: generate mock results
     const mockResults = this.generateMockAIResults();
 
-    // Update scan with processing results
     const updatedScan = await this.prisma.scan.update({
       where: { id: scanId },
       data: {
@@ -158,7 +170,6 @@ export class ScansService {
         );
       }
     } catch (error) {
-      // Log but don't throw - notification failure shouldn't fail scan processing
       console.error('Failed to create scan completion notification:', error);
     }
 

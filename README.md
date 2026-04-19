@@ -1,218 +1,434 @@
-# 🫁 PneumoDetect Backend
+# PneumoDetect Backend# 🫁 PneumoDetect Backend
 
-<p align="center">
+
+
+AI-powered pneumonia detection system backend built with NestJS and TypeScript.<p align="center">
+
   <strong>AI-Powered Pneumonia Detection System</strong><br>
-  A production-ready NestJS backend for intelligent X-ray analysis
+
+## Overview  A production-ready NestJS backend for intelligent X-ray analysis
+
 </p>
+
+PneumoDetect is a comprehensive backend API for detecting pneumonia from chest X-ray images using AI/ML models. It provides user authentication, patient management, scan processing, and analytics capabilities.
 
 <p align="center">
-  <img src="https://img.shields.io/badge/NestJS-11+-red?logo=nestjs" alt="NestJS" />
-  <img src="https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/PostgreSQL-15-336791?logo=postgresql" alt="PostgreSQL" />
-  <img src="https://img.shields.io/badge/Prisma-7.7.0-2D3748?logo=prisma" alt="Prisma" />
-  <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License" />
-</p>
 
----
+## Tech Stack  <img src="https://img.shields.io/badge/NestJS-11+-red?logo=nestjs" alt="NestJS" />
+
+  <img src="https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript" alt="TypeScript" />
+
+- **Framework**: NestJS 11+  <img src="https://img.shields.io/badge/PostgreSQL-15-336791?logo=postgresql" alt="PostgreSQL" />
+
+- **Language**: TypeScript  <img src="https://img.shields.io/badge/Prisma-7.7.0-2D3748?logo=prisma" alt="Prisma" />
+
+- **Database**: PostgreSQL 15 (Prisma ORM)  <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License" />
+
+- **Authentication**: JWT</p>
+
+- **File Storage**: Cloudinary
+
+- **Email**: Nodemailer (Gmail SMTP)---
+
+- **API Documentation**: Swagger/OpenAPI
 
 ## 📋 Overview
 
+## Prerequisites
+
 **PneumoDetect Backend** is a comprehensive REST API built with NestJS, TypeScript, and PostgreSQL. It provides:
 
-✅ **Authentication & Authorization** - JWT-based access control with role-based permissions
-✅ **Patient Management** - Complete patient record system with unique ID tracking
-✅ **Scan Management** - X-ray upload, storage, and processing capabilities
-✅ **Mock AI Processing** - AI result generation (PNEUMONIA/NORMAL) with confidence scores
-✅ **Dashboard Analytics** - Real-time statistics aggregation for mobile dashboards
-✅ **Notifications** - Real-time user notifications with automatic triggers
-✅ **Type-Safe** - 100% TypeScript with zero build errors
-✅ **Production-Ready** - Comprehensive testing, documentation, and error handling
+- Node.js 20+
 
----
+- PostgreSQL 15+✅ **Authentication & Authorization** - JWT-based access control with role-based permissions
+
+- npm or yarn✅ **Patient Management** - Complete patient record system with unique ID tracking
+
+✅ **Scan Management** - X-ray upload, storage, and processing capabilities
+
+## Environment Variables✅ **Mock AI Processing** - AI result generation (PNEUMONIA/NORMAL) with confidence scores
+
+✅ **Dashboard Analytics** - Real-time statistics aggregation for mobile dashboards
+
+Create a `.env` file in the root directory:✅ **Notifications** - Real-time user notifications with automatic triggers
+
+✅ **Type-Safe** - 100% TypeScript with zero build errors
+
+```env✅ **Production-Ready** - Comprehensive testing, documentation, and error handling
+
+DATABASE_URL=postgresql://postgres:postgres@localhost:5434/pneumodetect
+
+JWT_SECRET=your-secret-key-here---
+
+PORT=3000
 
 ## 🚀 Quick Start
 
-### Prerequisites
+CLOUDINARY_CLOUD_NAME=your-cloudinary-name
+
+CLOUDINARY_API_KEY=your-cloudinary-api-key### Prerequisites
+
+CLOUDINARY_API_SECRET=your-cloudinary-api-secret
 
 - Node.js 18+
-- PostgreSQL 15 (running on port 5434)
-- npm or yarn
+
+EMAIL_USER=your-email@gmail.com- PostgreSQL 15 (running on port 5434)
+
+EMAIL_PASSWORD=your-app-password- npm or yarn
+
+```
 
 ### Installation
 
+## Installation
+
 ```bash
-# 1. Clone repository
-git clone <repo-url>
-cd pneumodetect-backend
 
-# 2. Install dependencies
-npm install
+```bash# 1. Clone repository
 
-# 3. Setup environment variables
-cp .env.example .env
-# Edit .env with your database credentials
+# Install dependenciesgit clone <repo-url>
 
-# 4. Run database migrations
+npm installcd pneumodetect-backend
+
+
+
+# Generate Prisma Client# 2. Install dependencies
+
+npx prisma generatenpm install
+
+
+
+# Run migrations# 3. Setup environment variables
+
+npx prisma migrate devcp .env.example .env
+
+```# Edit .env with your database credentials
+
+
+
+## Running the Application# 4. Run database migrations
+
 npx prisma migrate dev
 
-# 5. Start development server
-npm run start:dev
+```bash
+
+# Development mode with auto-reload# 5. Start development server
+
+npm run start:devnpm run start:dev
+
 ```
 
-### Quick Test (30 seconds)
+# Production build
+
+npm run build### Quick Test (30 seconds)
+
+npm run start
 
 ```bash
-# 1. Get JWT token
-TOKEN=$(curl -s -X POST http://localhost:3000/auth/login \
-  -H "Content-Type: application/json" \
+
+# Watch mode# 1. Get JWT token
+
+npm run start:watchTOKEN=$(curl -s -X POST http://localhost:3000/auth/login \
+
+```  -H "Content-Type: application/json" \
+
   -d '{"email":"doctor@hospital.com","password":"Pass123!"}' \
-  | jq -r '.access_token')
 
-# 2. Test protected endpoint
+The server will start at `http://localhost:3000`  | jq -r '.access_token')
+
+
+
+## API Documentation# 2. Test protected endpoint
+
 curl -X GET http://localhost:3000/users/profile \
-  -H "Authorization: Bearer $TOKEN"
 
-# Done! ✅
+Swagger API documentation is available at `http://localhost:3000/api`  -H "Authorization: Bearer $TOKEN"
+
+
+
+## Project Structure# Done! ✅
+
 ```
 
----
-
-## 📦 7 Complete Modules
-
-### 1. Auth Module
-JWT-based authentication with role-based access control.
-```
-POST   /auth/register         - Register new user
-POST   /auth/login            - Login and get JWT token
-POST   /auth/refresh          - Refresh JWT token
-GET    /auth/me               - Get current user info
 ```
 
-### 2. Users Module
+src/---
+
+├── auth/              # Authentication & JWT
+
+├── users/             # User management## 📦 7 Complete Modules
+
+├── patients/          # Patient records
+
+├── scans/             # X-ray scan processing### 1. Auth Module
+
+├── analytics/         # Statistics & reportingJWT-based authentication with role-based access control.
+
+├── notifications/     # User notifications```
+
+├── admin/             # Admin operationsPOST   /auth/register         - Register new user
+
+├── mail/              # Email servicePOST   /auth/login            - Login and get JWT token
+
+├── prisma/            # Database servicePOST   /auth/refresh          - Refresh JWT token
+
+└── main.ts            # Application entry pointGET    /auth/me               - Get current user info
+
+``````
+
+
+
+## Key Features### 2. Users Module
+
 User profile management and information retrieval.
-```
-GET    /users/profile         - Get current user profile
-PATCH  /users/profile         - Update user profile
-GET    /users                 - List all users (admin)
-GET    /users/:id             - Get user by ID
+
+### Authentication```
+
+- User registration with email OTP verificationGET    /users/profile         - Get current user profile
+
+- 6-digit OTP with 10-minute expiryPATCH  /users/profile         - Update user profile
+
+- JWT-based session management (7-day tokens)GET    /users                 - List all users (admin)
+
+- Login restricted to verified usersGET    /users/:id             - Get user by ID
+
 ```
 
-### 3. Admin Module
-Administrative operations and system management.
-```
-PATCH  /admin/users/:id/role  - Change user role
+### Scan Management
+
+- Upload X-ray images to Cloudinary### 3. Admin Module
+
+- Process scans with AI resultsAdministrative operations and system management.
+
+- Track scan status (UPLOADED, PROCESSING, COMPLETED, FAILED)```
+
+- Generate confidence scores and heatmapsPATCH  /admin/users/:id/role  - Change user role
+
 GET    /admin/stats           - System statistics
-DELETE /admin/users/:id       - Delete user
-```
 
-### 4. Patients Module
+### User ManagementDELETE /admin/users/:id       - Delete user
+
+- Role-based access (ADMIN, CLINICIAN)```
+
+- User profiles with avatars
+
+- Active/inactive status management### 4. Patients Module
+
 Patient record management and tracking.
-```
-POST   /patients              - Create patient
-GET    /patients              - List all patients
-GET    /patients/:id          - Get patient by ID
-PATCH  /patients/:id          - Update patient
+
+### Analytics```
+
+- Real-time statistics dashboardPOST   /patients              - Create patient
+
+- Scan metrics by statusGET    /patients              - List all patients
+
+- User activity trackingGET    /patients/:id          - Get patient by ID
+
+- Performance analyticsPATCH  /patients/:id          - Update patient
+
 ```
 
-### 5. Scans Module
-X-ray scan management with file uploads and processing.
-```
-POST   /scans/upload          - Upload X-ray image
+### Notifications
+
+- Real-time scan completion alerts### 5. Scans Module
+
+- System notificationsX-ray scan management with file uploads and processing.
+
+- Mark as read/unread```
+
+- Bulk operationsPOST   /scans/upload          - Upload X-ray image
+
 GET    /scans                 - List scans (role-filtered)
-GET    /scans/:id             - Get scan by ID
+
+## Database SchemaGET    /scans/:id             - Get scan by ID
+
 POST   /scans/:id/process     - Process scan with AI
+
+Key models:```
+
+- **User**: Authentication & profile
+
+- **Patient**: Patient information### 6. Analytics Module
+
+- **Scan**: X-ray images and AI resultsDashboard statistics and metrics aggregation.
+
+- **Notification**: User alerts```
+
+- **Audit**: Admin actionsGET    /analytics/stats       - Get dashboard statistics
+
 ```
 
-### 6. Analytics Module
-Dashboard statistics and metrics aggregation.
-```
-GET    /analytics/stats       - Get dashboard statistics
-```
+## API Endpoints
 
 ### 7. Notifications Module ⭐ NEW
-Real-time notifications with automatic triggers.
-```
-GET    /notifications         - Get all notifications
-GET    /notifications/:id     - Get single notification
-PATCH  /notifications/:id/read - Mark as read/unread
-POST   /notifications         - Create notification
-POST   /notifications/mark-all-read - Mark all as read
-DELETE /notifications/:id     - Delete notification
-```
 
----
+### AuthReal-time notifications with automatic triggers.
+
+- `POST /auth/register` - Register new user```
+
+- `POST /auth/login` - Login with email/passwordGET    /notifications         - Get all notifications
+
+- `POST /auth/verify-otp` - Verify email with OTPGET    /notifications/:id     - Get single notification
+
+- `POST /auth/resend-otp` - Resend OTPPATCH  /notifications/:id/read - Mark as read/unread
+
+- `GET /auth/me` - Get current user (requires JWT)POST   /notifications         - Create notification
+
+POST   /notifications/mark-all-read - Mark all as read
+
+### ScansDELETE /notifications/:id     - Delete notification
+
+- `POST /scans/upload` - Upload new scan```
+
+- `POST /scans/:id/process` - Process scan
+
+- `GET /scans` - List scans---
+
+- `GET /scans/:id` - Get scan details
 
 ## 🛠️ Development
 
-### Available Commands
+### Patients
 
-```bash
-# Development mode (with hot reload)
+- `POST /patients` - Create patient### Available Commands
+
+- `GET /patients` - List patients
+
+- `GET /patients/:id` - Get patient details```bash
+
+- `PATCH /patients/:id` - Update patient# Development mode (with hot reload)
+
 npm run start:dev
 
-# Production build
+### Analytics
+
+- `GET /analytics/stats` - Get statistics# Production build
+
 npm run build
 
-# Production mode
-npm run start:prod
+### Admin
+
+- `GET /admin/users` - List all users# Production mode
+
+- `PATCH /admin/users/:id/status` - Update user statusnpm run start:prod
+
+- `DELETE /admin/users/:id` - Delete user
 
 # Run tests
+
+## Testingnpm run test
+
+
+
+```bash# Run e2e tests
+
+# Run testsnpm run test:e2e
+
 npm run test
 
-# Run e2e tests
+# Lint code
+
+# Run e2e testsnpm run lint
+
 npm run test:e2e
 
-# Lint code
-npm run lint
+```# Format code
 
-# Format code
 npm run format
-```
 
-### Database
+## Email Configuration```
 
-```bash
-# Create new migration
-npx prisma migrate dev --name <migration_name>
 
-# View database UI
+
+The system uses Nodemailer with Gmail SMTP. To enable:### Database
+
+
+
+1. Generate an [App Password](https://myaccount.google.com/apppasswords) from Google Account```bash
+
+2. Add to `.env`:# Create new migration
+
+   ```npx prisma migrate dev --name <migration_name>
+
+   EMAIL_USER=your-email@gmail.com
+
+   EMAIL_PASSWORD=your-app-password# View database UI
+
+   ```npx prisma studio
+
+
+
+## Database Migrations# Reset database (⚠️ deletes all data)
+
+npx prisma migrate reset
+
+```bash```
+
+# Create migration
+
+npx prisma migrate dev --name migration-name---
+
+
+
+# View database## 🏗️ Architecture
+
 npx prisma studio
 
-# Reset database (⚠️ deletes all data)
-npx prisma migrate reset
-```
+``````
 
----
-
-## 🏗️ Architecture
-
-```
 ┌─────────────────────────────────────┐
-│     Mobile App (React Native)       │
+
+## Error Handling│     Mobile App (React Native)       │
+
 │  - Login/Register                   │
-│  - Patient Management               │
-│  - Scan Upload & Results            │
-│  - Dashboard & Notifications        │
-└──────────────┬──────────────────────┘
+
+- Proper HTTP status codes│  - Patient Management               │
+
+- Detailed error messages│  - Scan Upload & Results            │
+
+- Input validation with class-validator│  - Dashboard & Notifications        │
+
+- Exception filters for consistent responses└──────────────┬──────────────────────┘
+
                │ HTTP REST API
-┌──────────────▼──────────────────────┐
+
+## Security┌──────────────▼──────────────────────┐
+
 │    NestJS Backend (port 3000)       │
-├─────────────────────────────────────┤
-│ 7 Modules:                          │
-│ ✅ Auth (JWT)                       │
-│ ✅ Users (Profiles)                 │
-│ ✅ Admin (Management)               │
-│ ✅ Patients (Records)               │
+
+- Password hashing with bcrypt (10 rounds)├─────────────────────────────────────┤
+
+- JWT token expiry (7 days)│ 7 Modules:                          │
+
+- Email verification required before login│ ✅ Auth (JWT)                       │
+
+- OTP validation with expiry│ ✅ Users (Profiles)                 │
+
+- Role-based access control│ ✅ Admin (Management)               │
+
+- Protected routes with JwtAuthGuard│ ✅ Patients (Records)               │
+
 │ ✅ Scans (X-rays)                   │
-│ ✅ Analytics (Dashboard)            │
+
+## Contributing│ ✅ Analytics (Dashboard)            │
+
 │ ✅ Notifications (Alerts)           │
-└──────────────┬──────────────────────┘
-               │ SQL
-┌──────────────▼──────────────────────┐
-│   PostgreSQL 15 Database            │
+
+1. Create a feature branch└──────────────┬──────────────────────┘
+
+2. Make your changes               │ SQL
+
+3. Ensure tests pass┌──────────────▼──────────────────────┐
+
+4. Submit a pull request│   PostgreSQL 15 Database            │
+
 │   (localhost:5434)                  │
-└─────────────────────────────────────┘
+
+## License└─────────────────────────────────────┘
+
 ```
+
+Proprietary - PneumoDetect
 
 ---
 
