@@ -10,28 +10,10 @@ import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { NotificationResponseDto, NotificationsListDto } from './dto/notification-response.dto';
 import { NotificationType } from '@prisma/client';
 
-/**
- * Notifications Service
- * 
- * Handles all notification-related business logic:
- * - Fetching notifications for a user (newest first)
- * - Marking notifications as read
- * - Creating new notifications (internal use)
- * - Authorization checks (only notification owner can read/update)
- */
 @Injectable()
 export class NotificationsService {
   constructor(private prisma: PrismaService) {}
 
-  /**
-   * Get all notifications for the current user
-   * - Filters by userId
-   * - Orders by newest first (createdAt DESC)
-   * - Returns complete list with metadata (count, unreadCount)
-   * 
-   * @param userId - ID of the authenticated user
-   * @returns NotificationsListDto with data array and metadata
-   */
   async getNotifications(userId: string): Promise<NotificationsListDto> {
     const notifications = await this.prisma.notification.findMany({
       where: { userId },
@@ -41,18 +23,6 @@ export class NotificationsService {
     return new NotificationsListDto(notifications);
   }
 
-  /**
-   * Get a single notification by ID with authorization check
-   * - Verifies notification exists
-   * - Ensures requesting user is the owner
-   * - Throws ForbiddenException if unauthorized
-   * 
-   * @param notificationId - ID of notification to fetch
-   * @param userId - ID of requesting user
-   * @returns NotificationResponseDto if authorized
-   * @throws NotFoundException if notification doesn't exist
-   * @throws ForbiddenException if user is not the owner
-   */
   async getNotificationById(
     notificationId: string,
     userId: string,
@@ -67,7 +37,6 @@ export class NotificationsService {
       );
     }
 
-    // Authorization: only the notification owner can view it
     if (notification.userId !== userId) {
       throw new ForbiddenException(
         'You do not have permission to access this notification',
@@ -77,19 +46,6 @@ export class NotificationsService {
     return new NotificationResponseDto(notification);
   }
 
-  /**
-   * Mark a notification as read or unread
-   * - Verifies notification exists
-   * - Ensures requesting user is the owner
-   * - Updates the read field
-   * 
-   * @param notificationId - ID of notification to update
-   * @param userId - ID of requesting user
-   * @param updateDto - Contains new read status
-   * @returns Updated NotificationResponseDto
-   * @throws NotFoundException if notification doesn't exist
-   * @throws ForbiddenException if user is not the owner
-   */
   async markAsRead(
     notificationId: string,
     userId: string,
@@ -154,17 +110,6 @@ export class NotificationsService {
     return new NotificationResponseDto(notification);
   }
 
-  /**
-   * Internal method: Create a scan completion notification
-   * - Called by ScansService after scan is processed successfully
-   * - Creates SCAN type notification for the doctor
-   * - Message includes patient name and scan result
-   * 
-   * @param doctorId - ID of the doctor who performed the scan
-   * @param patientName - Name of the patient
-   * @param scanResult - Result of the scan (PNEUMONIA or NORMAL)
-   * @returns Created NotificationResponseDto
-   */
   async createScanCompletionNotification(
     doctorId: string,
     patientName: string,
@@ -178,16 +123,6 @@ export class NotificationsService {
     return this.createNotification(dto);
   }
 
-  /**
-   * Internal method: Create a system notification
-   * - Called for general system messages
-   * - Visible to specified user
-   * 
-   * @param userId - ID of recipient user
-   * @param title - Notification title
-   * @param message - Notification message
-   * @returns Created NotificationResponseDto
-   */
   async createSystemNotification(
     userId: string,
     title: string,

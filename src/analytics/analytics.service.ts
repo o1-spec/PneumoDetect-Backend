@@ -6,16 +6,9 @@ import { AnalyticsStatsDto, RecentScanDto } from './dto/analytics-stats.dto';
 export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
 
-  /**
-   * Get analytics stats for the dashboard
-   * - If user is CLINICIAN: returns stats only for their scans
-   * - If user is ADMIN: returns stats for all scans
-   */
   async getStats(userId: string, userRole: string): Promise<AnalyticsStatsDto> {
-    // Build where clause based on role
     const whereClause = this.buildWhereClause(userId, userRole);
 
-    // Fetch all scans matching the criteria
     const scans = await this.prisma.scan.findMany({
       where: whereClause,
       include: {
@@ -29,10 +22,7 @@ export class AnalyticsService {
       },
     });
 
-    // Calculate all statistics
     const stats = this.calculateStats(scans);
-
-    // Get recent scans (latest 5)
     const recentScans = await this.getRecentScans(userId, userRole, 5);
 
     return new AnalyticsStatsDto({
@@ -41,18 +31,11 @@ export class AnalyticsService {
     });
   }
 
-  /**
-   * Build Prisma where clause based on user role
-   * - CLINICIAN: only their scans (doctorId === userId)
-   * - ADMIN: all scans
-   */
   private buildWhereClause(userId: string, userRole: string) {
     if (userRole === 'ADMIN') {
-      // Admin sees all scans
       return {};
     }
 
-    // Clinician sees only their scans
     return {
       doctorId: userId,
     };

@@ -21,12 +21,6 @@ export class ScansService {
     private notificationsService: NotificationsService,
   ) {}
 
-  /**
-   * Create a new scan record after file upload
-   * - Validates patient exists
-   * - Creates scan with UPLOADED status
-   * - Returns scan with related patient and doctor info
-   */
   async createScan(
     createScanDto: CreateScanDto,
     imageUrl: string,
@@ -34,7 +28,6 @@ export class ScansService {
   ): Promise<ScanResponseDto> {
     const { patientId } = createScanDto;
 
-    // Validate patient exists
     const patient = await this.prisma.patient.findUnique({
       where: { id: patientId },
     });
@@ -43,7 +36,6 @@ export class ScansService {
       throw new NotFoundException(`Patient with ID ${patientId} not found`);
     }
 
-    // Create scan record
     const scan = await this.prisma.scan.create({
       data: {
         imageUrl,

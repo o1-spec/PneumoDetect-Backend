@@ -6,13 +6,11 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS for mobile apps
   app.enableCors({
     origin: '*',
     credentials: true,
   });
 
-  // Setup Swagger Documentation
   const config = new DocumentBuilder()
     .setTitle('PneumoDetect API')
     .setDescription(
