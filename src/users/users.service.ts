@@ -167,10 +167,11 @@ export class UsersService {
 
   /**
    * Get recent activity for the current user
-   * Combines recent scans, notifications, and profile updates
+   * Combines recent scans, notifications, profile updates, and login history
    */
   async getRecentActivity(userId: string, limit: number = 20): Promise<RecentActivityDto[]> {
-    const user = await this.prisma.user.findUnique({
+    // Fetch user with scans
+    const userWithScans = await (this.prisma.user as any).findUnique({
       where: { id: userId },
       include: {
         scans: {
@@ -184,6 +185,13 @@ export class UsersService {
             },
           },
         },
+      },
+    });
+
+    // Fetch user with notifications
+    const userWithNotifications = await (this.prisma.user as any).findUnique({
+      where: { id: userId },
+      include: {
         notifications: {
           orderBy: { createdAt: 'desc' },
           take: limit,
@@ -191,55 +199,101 @@ export class UsersService {
       },
     });
 
-    if (!user) {
+    // Fetch user with login history
+    const userWithLoginHistory = await (this.prisma.user as any).findUnique({
+      where: { id: userId },
+      include: {
+        loginHistory: {
+          orderBy: { loginAt: 'desc' },
+          take: limit,
+        },
+      },
+    });
+
+    // Fetch base user
+    const baseUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!baseUser) {
       throw new NotFoundException('User not found');
     }
 
     const activities: RecentActivityDto[] = [];
 
     // Add scans to activity
-    user.scans.forEach((scan) => {
-      activities.push({
-        id: scan.id,
-        type: 'SCAN',
-        title: 'Scan Processed',
-        message: `X-ray scan for patient ${scan.patient.name} - Status: ${scan.status}`,
-        icon: '🔍',
-        timestamp: scan.updatedAt,
-        metadata: {
-          scanId: scan.id,
-          scanResult: scan.result || 'Pending',
-          confidence: scan.confidence !== null ? scan.confidence : undefined,
-          patientName: scan.patient.name,
-        },
+    if (userWithScans?.scans) {
+      userWithScans.scans.forEach((scan) => {
+        activities.push({
+          id: scan.id,
+          type: 'SCAN',
+          title: 'Scan Processed',
+          message: `X-ray scan for patient ${scan.patient.name} - Status: ${scan.status}`,
+          icon: '🔍',
+          timestamp: scan.updatedAt,
+          metadata: {
+            scanId: scan.id,
+            scanResult: scan.result || 'Pending',
+            confidence: scan.confidence !== null ? scan.confidence : undefined,
+            patientName: scan.patient.name,
+          },
+        });
       });
-    });
+    }
 
     // Add notifications to activity
-    user.notifications.forEach((notification) => {
-      activities.push({
-        id: notification.id,
-        type: 'NOTIFICATION',
-        title: notification.title,
-        message: notification.message,
-        icon: '🔔',
-        timestamp: notification.createdAt,
-        metadata: {
-          notificationId: notification.id,
-          notificationType: notification.type,
-        },
+    if (userWithNotifications?.notifications) {
+      userWithNotifications.notifications.forEach((notification) => {
+        activities.push({
+          id: notification.id,
+          type: 'NOTIFICATION',
+          title: notification.title,
+          message: notification.message,
+          icon: '🔔',
+          timestamp: notification.createdAt,
+          metadata: {
+            notificationId: notification.id,
+            notificationType: notification.type,
+          },
+        });
       });
-    });
+    }
+
+    // Add login history to activity
+    if (userWithLoginHistory?.loginHistory) {
+      userWithLoginHistory.loginHistory.forEach((login) => {
+        const duration = login.logoutAt
+          ? Math.round((login.logoutAt.getTime() - login.loginAt.getTime()) / 1000 / 60)
+          : null;
+        const durationStr = duration ? ` (${duration} min)` : '';
+        
+        activities.push({
+          id: `login-${login.id}`,
+          type: 'LOGIN',
+          title: 'Login',
+          message: `Logged in from ${login.ipAddress || 'Unknown IP'}${durationStr}`,
+          icon: '🔐',
+          timestamp: login.loginAt,
+          metadata: {
+            loginId: login.id,
+            ipAddress: login.ipAddress,
+            userAgent: login.userAgent,
+            logoutAt: login.logoutAt,
+            sessionDurationMinutes: duration || undefined,
+          },
+        });
+      });
+    }
 
     // Add profile updates (from user updatedAt if different from createdAt)
-    if (user.updatedAt > user.createdAt) {
+    if (baseUser.updatedAt > baseUser.createdAt) {
       activities.push({
-        id: `${user.id}-profile-update`,
+        id: `${baseUser.id}-profile-update`,
         type: 'PROFILE_UPDATE',
         title: 'Profile Updated',
-        message: `Your profile was last updated on ${user.updatedAt.toLocaleDateString()}`,
+        message: `Your profile was last updated on ${baseUser.updatedAt.toLocaleDateString()}`,
         icon: '👤',
-        timestamp: user.updatedAt,
+        timestamp: baseUser.updatedAt,
       });
     }
 

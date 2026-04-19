@@ -52,7 +52,7 @@ export class AuthService {
     return this.buildAuthResponse(user, accessToken);
   }
 
-  async login(loginDto: LoginDto): Promise<AuthResponseDto> {
+  async login(loginDto: LoginDto, req?: any): Promise<AuthResponseDto> {
     const { email, password } = loginDto;
 
     const user = await this.prisma.user.findUnique({
@@ -74,6 +74,25 @@ export class AuthService {
 
     if (!user.isActive) {
       throw new UnauthorizedException('User account is inactive');
+    }
+
+    // Track login history
+    if (req) {
+      const ipAddress = req.ip || req.connection?.remoteAddress || 'UNKNOWN';
+      const userAgent = req.headers?.['user-agent'] || 'UNKNOWN';
+
+      try {
+        await this.prisma.loginHistory.create({
+          data: {
+            userId: user.id,
+            ipAddress,
+            userAgent,
+            loginAt: new Date(),
+          },
+        });
+      } catch (error) {
+        console.error('Failed to track login history:', error);
+      }
     }
 
     const accessToken = this.generateToken(user.id, user.email, user.role);
@@ -171,7 +190,33 @@ export class AuthService {
     };
   }
 
-  logout(): { message: string } {
+  async logout(userId?: string): Promise<{ message: string }> {
+    if (userId) {
+      try {
+        // Find the most recent login record without a logout time
+        const recentLogin = await this.prisma.loginHistory.findFirst({
+          where: {
+            userId,
+            logoutAt: null,
+          },
+          orderBy: {
+            loginAt: 'desc',
+          },
+        });
+
+        if (recentLogin) {
+          await this.prisma.loginHistory.update({
+            where: { id: recentLogin.id },
+            data: {
+              logoutAt: new Date(),
+            },
+          });
+        }
+      } catch (error) {
+        console.error('Failed to track logout:', error);
+      }
+    }
+
     return {
       message: 'Logged out successfully',
     };

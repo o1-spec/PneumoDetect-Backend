@@ -111,6 +111,31 @@ export class ScansController {
   }
 
   /**
+   * GET /scans/patient/:patientId
+   * Get all scans for a specific patient
+   * - Only allows doctor who created scans for that patient or admin
+   * - Includes patient and doctor info
+   * - Ordered by newest first
+   */
+  @Get('patient/:patientId')
+  async getScansByPatient(
+    @Param('patientId') patientId: string,
+    @CurrentUser() user: any,
+  ) {
+    const scans = await this.scansService.getScansByPatient(
+      patientId,
+      user.id,
+      user.role,
+    );
+
+    return {
+      count: scans.length,
+      patientId,
+      scans,
+    };
+  }
+
+  /**
    * GET /scans/:id
    * Get a single scan by ID
    * - Only allows owner doctor or admin

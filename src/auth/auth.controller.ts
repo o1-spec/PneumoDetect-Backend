@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, UseGuards, Req } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -54,8 +54,8 @@ export class AuthController {
     status: 401,
     description: 'Invalid credentials',
   })
-  async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
-    return this.authService.login(loginDto);
+  async login(@Body() loginDto: LoginDto, @Req() req: any): Promise<AuthResponseDto> {
+    return this.authService.login(loginDto, req);
   }
 
   /**
@@ -145,7 +145,7 @@ export class AuthController {
     description: 'Unauthorized - invalid or missing JWT token',
   })
   async logout(@CurrentUser() user: any): Promise<{ message: string }> {
-    return this.authService.logout();
+    return this.authService.logout(user.id);
   }
 
   @Post('change-password')

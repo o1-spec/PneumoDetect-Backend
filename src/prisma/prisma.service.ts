@@ -41,4 +41,8 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   get notification() {
     return this.prisma.notification;
   }
+
+  get loginHistory() {
+    return this.prisma.loginHistory;
+  }
 }

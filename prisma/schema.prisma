@@ -53,6 +53,7 @@ model User {
 
   scans          Scan[]
   notifications  Notification[]
+  loginHistory   LoginHistory[]
 }
 
 model Patient {
@@ -96,4 +97,17 @@ model Notification {
 
   userId         String
   user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LoginHistory {
+  id             String            @id @default(cuid())
+  userId         String
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loginAt        DateTime          @default(now())
+  logoutAt       DateTime?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime          @default(now())
+
+  @@index([userId, loginAt])
 }

@@ -306,6 +306,65 @@ export class ScansService {
   }
 
   /**
+   * Get all scans for a specific patient
+   * - Only allows doctor who created scans for that patient or admin
+   * - Include patient and doctor info
+   * - Order by newest first
+   */
+  async getScansByPatient(
+    patientId: string,
+    doctorId: string,
+    userRole: string,
+  ): Promise<ScanResponseDto[]> {
+    // Verify patient exists
+    const patient = await this.prisma.patient.findUnique({
+      where: { id: patientId },
+    });
+
+    if (!patient) {
+      throw new NotFoundException(`Patient with ID ${patientId} not found`);
+    }
+
+    // Get all scans for this patient
+    const scans = await this.prisma.scan.findMany({
+      where: { patientId },
+      include: {
+        patient: {
+          select: {
+            id: true,
+            idNumber: true,
+            name: true,
+            age: true,
+            gender: true,
+          },
+        },
+        doctor: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // If not admin, filter scans to only those created by this doctor
+    if (userRole !== 'ADMIN') {
+      const filteredScans = scans.filter(scan => scan.doctorId === doctorId);
+      if (filteredScans.length === 0) {
+        throw new ForbiddenException(
+          'You can only view scans you created for this patient',
+        );
+      }
+      return filteredScans.map(scan => new ScanResponseDto(scan));
+    }
+
+    return scans.map(scan => new ScanResponseDto(scan));
+  }
+
+  /**
    * Check if a scan exists (helper method)
    */
   async scanExists(scanId: string): Promise<boolean> {
