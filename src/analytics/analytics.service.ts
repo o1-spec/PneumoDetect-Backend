@@ -142,4 +142,63 @@ export class AnalyticsService {
         }) as RecentScanDto,
     );
   }
+
+  /**
+   * Get scan results breakdown for charts
+   * - Returns count of each result type (PNEUMONIA_DETECTED, NORMAL, CONCERNS)
+   * - Filtered by user role (CLINICIAN sees own, ADMIN sees all)
+   */
+  async getScanResults(userId: string, userRole: string): Promise<any> {
+    const whereClause = this.buildWhereClause(userId, userRole);
+
+    const scans = await this.prisma.scan.findMany({
+      where: {
+        ...whereClause,
+        status: 'COMPLETED',
+        result: {
+          not: null,
+        },
+      },
+    });
+
+    const pneumoniaDetected = scans.filter(
+      (s) => s.result === 'PNEUMONIA_DETECTED',
+    ).length;
+    const normal = scans.filter((s) => s.result === 'NORMAL').length;
+    const concerns = scans.filter((s) => s.result === 'CONCERNS').length;
+
+    return {
+      pneumoniaDetected,
+      normal,
+      concerns,
+      total: scans.length,
+      breakdown: [
+        {
+          name: 'Pneumonia Detected',
+          value: pneumoniaDetected,
+          percentage:
+            scans.length > 0
+              ? ((pneumoniaDetected / scans.length) * 100).toFixed(1)
+              : '0',
+        },
+        {
+          name: 'Normal',
+          value: normal,
+          percentage:
+            scans.length > 0
+              ? ((normal / scans.length) * 100).toFixed(1)
+              : '0',
+        },
+        {
+          name: 'Concerns',
+          value: concerns,
+          percentage:
+            scans.length > 0
+              ? ((concerns / scans.length) * 100).toFixed(1)
+              : '0',
+        },
+      ],
+    };
+  }
 }
+

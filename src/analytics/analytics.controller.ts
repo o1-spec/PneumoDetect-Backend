@@ -20,4 +20,17 @@ export class AnalyticsController {
     const stats = await this.analyticsService.getStats(user.id, user.role);
     return stats;
   }
+
+  /**
+   * GET /analytics/scans/results
+   * Get scan results breakdown for charts
+   * - Returns count of each result type (PNEUMONIA_DETECTED, NORMAL, CONCERNS)
+   * - CLINICIAN: results for their scans only
+   * - ADMIN: results for all scans
+   */
+  @Get('scans/results')
+  async getScanResults(@CurrentUser() user: any): Promise<any> {
+    return this.analyticsService.getScanResults(user.id, user.role);
+  }
 }
+
