@@ -138,14 +138,14 @@ export class DashboardService {
     const normalScans = await this.prisma.scan.count({
       where: {
         result: 'NORMAL',
-        ...(userRole === 'CLINICIAN' && { doctorId: userId }),
+        ...(userRole === 'CLINICIAN' && { clinicianId: userId }),
       },
     });
 
     const processingScans = await this.prisma.scan.count({
       where: {
         status: 'PROCESSING',
-        ...(userRole === 'CLINICIAN' && { doctorId: userId }),
+        ...(userRole === 'CLINICIAN' && { clinicianId: userId }),
       },
     });
 
@@ -154,7 +154,7 @@ export class DashboardService {
       _avg: { confidence: true },
       where: {
         confidence: { not: null },
-        ...(userRole === 'CLINICIAN' && { doctorId: userId }),
+        ...(userRole === 'CLINICIAN' && { clinicianId: userId }),
       },
     });
 
