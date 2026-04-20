@@ -11,12 +11,12 @@ export class SendMessageDto {
   @MaxLength(2000)
   message: string;
 
-  // Optional contact email so guests can provide a way to be reached
+
   @IsOptional()
   @IsEmail()
   contactEmail?: string;
 
-  // Optional phone number or other contact hint
+
   @IsOptional()
   @IsString()
   @MaxLength(30)

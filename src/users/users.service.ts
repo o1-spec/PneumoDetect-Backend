@@ -41,7 +41,7 @@ export class UsersService {
    * Update the current user's profile
    */
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto): Promise<UserResponseDto> {
-    // Verify user exists
+
     const userExists = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -50,7 +50,7 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    // Update user profile
+
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -170,7 +170,7 @@ export class UsersService {
    * Combines recent scans, notifications, profile updates, and login history
    */
   async getRecentActivity(userId: string, limit: number = 20): Promise<RecentActivityDto[]> {
-    // Fetch user with scans
+
     const userWithScans = await (this.prisma.user as any).findUnique({
       where: { id: userId },
       include: {
@@ -188,7 +188,7 @@ export class UsersService {
       },
     });
 
-    // Fetch user with notifications
+
     const userWithNotifications = await (this.prisma.user as any).findUnique({
       where: { id: userId },
       include: {
@@ -199,7 +199,7 @@ export class UsersService {
       },
     });
 
-    // Fetch user with login history
+
     const userWithLoginHistory = await (this.prisma.user as any).findUnique({
       where: { id: userId },
       include: {
@@ -210,7 +210,7 @@ export class UsersService {
       },
     });
 
-    // Fetch base user
+
     const baseUser = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -221,7 +221,7 @@ export class UsersService {
 
     const activities: RecentActivityDto[] = [];
 
-    // Add scans to activity
+
     if (userWithScans?.scans) {
       userWithScans.scans.forEach((scan) => {
         activities.push({
@@ -241,7 +241,7 @@ export class UsersService {
       });
     }
 
-    // Add notifications to activity
+
     if (userWithNotifications?.notifications) {
       userWithNotifications.notifications.forEach((notification) => {
         activities.push({
@@ -259,7 +259,7 @@ export class UsersService {
       });
     }
 
-    // Add login history to activity
+
     if (userWithLoginHistory?.loginHistory) {
       userWithLoginHistory.loginHistory.forEach((login) => {
         const duration = login.logoutAt
@@ -285,7 +285,7 @@ export class UsersService {
       });
     }
 
-    // Add profile updates (from user updatedAt if different from createdAt)
+
     if (baseUser.updatedAt > baseUser.createdAt) {
       activities.push({
         id: `${baseUser.id}-profile-update`,
@@ -297,7 +297,7 @@ export class UsersService {
       });
     }
 
-    // Sort by timestamp descending and limit results
+
     return activities
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       .slice(0, limit);
@@ -325,7 +325,7 @@ export class UsersService {
       throw new NotFoundException('Patient profile not found');
     }
 
-    // Calculate age from date of birth
+
     const today = new Date();
     const birthDate = new Date(patientProfile.dateOfBirth);
     let age = today.getFullYear() - birthDate.getFullYear();
@@ -376,7 +376,7 @@ export class UsersService {
       throw new NotFoundException('Patient profile not found');
     }
 
-    // Update user fields if provided
+
     if (updateDto.name || updateDto.phone) {
       await this.prisma.user.update({
         where: { id: userId },
@@ -387,7 +387,7 @@ export class UsersService {
       });
     }
 
-    // Update patient profile fields
+
     const updateData: any = {};
 
     if (updateDto.dateOfBirth) {
@@ -413,7 +413,7 @@ export class UsersService {
       data: updateData,
     });
 
-    // Calculate age from date of birth
+
     const today = new Date();
     const birthDate = new Date(updated.dateOfBirth);
     let age = today.getFullYear() - birthDate.getFullYear();

@@ -41,19 +41,11 @@ export class AnalyticsService {
     };
   }
 
-  /**
-   * Calculate all statistics from scans array
-   * Counts:
-   * - Total, completed, processing, failed scans
-   * - Pneumonia_detected and normal cases
-   * - Average confidence score
-   */
   private calculateStats(
     scans: any[],
   ): Omit<AnalyticsStatsDto, 'recentScans'> {
     const totalScans = scans.length;
 
-    // Count by status
     const completedScans = scans.filter(
       (s) => s.status === 'COMPLETED',
     ).length;
@@ -62,7 +54,6 @@ export class AnalyticsService {
     ).length;
     const failedScans = scans.filter((s) => s.status === 'FAILED').length;
 
-    // Count by result (only completed scans have results)
     const completedWithResults = scans.filter(
       (s) => s.status === 'COMPLETED' && s.result !== null,
     );
@@ -73,7 +64,7 @@ export class AnalyticsService {
       (s) => s.result === 'NORMAL',
     ).length;
 
-    // Calculate average confidence (only for completed scans with confidence)
+
     const scansWithConfidence = completedWithResults.filter(
       (s) => s.confidence !== null,
     );
@@ -98,20 +89,13 @@ export class AnalyticsService {
     };
   }
 
-  /**
-   * Get recent scans (newest first)
-   * Includes patient information
-   * Limited to specified count
-   */
   private async getRecentScans(
     userId: string,
     userRole: string,
     limit: number,
   ): Promise<RecentScanDto[]> {
-    // Build where clause
     const whereClause = this.buildWhereClause(userId, userRole);
 
-    // Fetch recent scans
     const scans = await this.prisma.scan.findMany({
       where: whereClause,
       include: {
@@ -129,7 +113,6 @@ export class AnalyticsService {
       take: limit,
     });
 
-    // Transform to DTO
     return scans.map(
       (scan) =>
         ({
@@ -143,17 +126,9 @@ export class AnalyticsService {
     );
   }
 
-  /**
-   * Get comprehensive scan results breakdown for dashboard charts
-   * - Includes result breakdown (PNEUMONIA_DETECTED vs NORMAL vs CONCERNS)
-   * - Confidence distribution (excellent, good, fair)
-   * - Daily timeline data for trend analysis
-   * - Filtered by user role (CLINICIAN sees own, ADMIN sees all)
-   */
   async getScanResults(userId: string, userRole: string): Promise<any> {
     const whereClause = this.buildWhereClause(userId, userRole);
 
-    // Get all completed scans with results
     const scans = await this.prisma.scan.findMany({
       where: {
         ...whereClause,
@@ -186,7 +161,6 @@ export class AnalyticsService {
       };
     }
 
-    // Result breakdown
     const pneumoniaCount = scans.filter(
       (s) => s.result === 'PNEUMONIA_DETECTED',
     ).length;
@@ -207,7 +181,6 @@ export class AnalyticsService {
       ),
     };
 
-    // Confidence distribution
     const scansWithConfidence = scans.filter((s) => s.confidence !== null);
     const excellent = scansWithConfidence.filter(
       (s) => s.confidence! > 0.9,
@@ -225,7 +198,6 @@ export class AnalyticsService {
       fair,
     };
 
-    // Calculate average confidence
     const totalConfidence = scansWithConfidence.reduce(
       (sum, s) => sum + s.confidence!,
       0,
@@ -235,7 +207,6 @@ export class AnalyticsService {
         ? parseFloat((totalConfidence / scansWithConfidence.length).toFixed(4))
         : 0;
 
-    // Timeline data (daily breakdown for last 7 days)
     const timelineData: any[] = [];
     const last7Days = new Date();
     last7Days.setDate(last7Days.getDate() - 6);

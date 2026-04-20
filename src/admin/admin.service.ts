@@ -40,7 +40,7 @@ export class AdminService {
    * Update user status (activate/deactivate)
    */
   async updateUserStatus(userId: string, updateUserStatusDto: UpdateUserStatusDto): Promise<UserResponseDto> {
-    // Verify user exists
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -49,9 +49,9 @@ export class AdminService {
       throw new NotFoundException('User not found');
     }
 
-    // Prevent admin from deactivating themselves
-    // This would require passing the admin's ID to this method
-    // For now, we'll just update the status
+
+
+
 
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
@@ -91,7 +91,7 @@ export class AdminService {
    * Delete a user (admin only)
    */
   async deleteUser(userId: string): Promise<{ message: string }> {
-    // Verify user exists
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -100,7 +100,7 @@ export class AdminService {
       throw new NotFoundException('User not found');
     }
 
-    // Delete user and their related data (cascade delete via Prisma schema)
+
     await this.prisma.user.delete({
       where: { id: userId },
     });

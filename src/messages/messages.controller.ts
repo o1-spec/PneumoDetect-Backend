@@ -14,7 +14,7 @@ export class MessagesController {
   @ApiResponse({ status: 400, description: 'Validation error' })
   @UsePipes(new ValidationPipe({ transform: true }))
   async sendMessage(@Req() req: any, @Body() dto: SendMessageDto) {
-    // req.user will be undefined for unauthenticated requests
+
     const userId = req?.user?.id ?? null;
     return this.messagesService.sendMessage(userId, dto);
   }

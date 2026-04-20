@@ -50,7 +50,7 @@ export class PatientsController {
     @Param('id') patientId: string,
     @Query('includeScans') includeScans: string = 'false',
   ): Promise<PatientResponseDto | any> {
-    // Convert string to boolean
+
     const shouldIncludeScans = includeScans === 'true';
     return this.patientsService.getPatientById(patientId, shouldIncludeScans);
   }

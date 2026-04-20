@@ -40,7 +40,7 @@ export class MessagesService {
       throw err;
     }
 
-    // If we have a userId, confirm receipt via in-app notification
+
     if (userId) {
       try {
         await this.notificationsService.createNotification({
@@ -50,7 +50,7 @@ export class MessagesService {
           type: NotificationType.SYSTEM,
         });
       } catch (err) {
-        // Don't fail the whole request if notification creation fails
+
         this.logger.warn('Failed to create confirmation notification', err?.message || err);
       }
     }

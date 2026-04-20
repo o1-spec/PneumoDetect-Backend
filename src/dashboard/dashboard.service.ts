@@ -5,9 +5,6 @@ import { PrismaService } from '../prisma/prisma.service';
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Get weekly activity data for charts
-   */
   async getWeeklyActivity(userId?: string, userRole?: string) {
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
@@ -40,7 +37,6 @@ export class DashboardService {
       });
     }
 
-    // Calculate trend
     const firstHalf = activityData.slice(0, 3).reduce((sum, d) => sum + d.scans, 0);
     const secondHalf = activityData.slice(3, 7).reduce((sum, d) => sum + d.scans, 0);
     const trend = firstHalf > 0 ? ((secondHalf - firstHalf) / firstHalf) * 100 : 0;
@@ -52,9 +48,6 @@ export class DashboardService {
     };
   }
 
-  /**
-   * Get recent scans with patient info
-   */
   async getRecentScans(limit: number = 10, userId?: string, userRole?: string) {
     const scans = await this.prisma.scan.findMany({
       where: {
@@ -81,20 +74,14 @@ export class DashboardService {
     }));
   }
 
-  /**
-   * Get system status
-   */
   async getSystemStatus() {
     try {
-      // Check database connection
       const dbCheck = await this.prisma.user.count();
       const dbStatus = dbCheck >= 0 ? 'Connected' : 'Disconnected';
 
-      // Get storage usage (from scans count and estimated size)
       const scanCount = await this.prisma.scan.count();
-      // Estimate: average scan image is ~5MB
-      const estimatedStorageUsed = (scanCount * 5) / 1024; // Convert to GB
-      const totalStorageGB = 100; // Assume 100GB total
+      const estimatedStorageUsed = (scanCount * 5) / 1024;
+      const totalStorageGB = 100;
       const storagePercentage = Math.min((estimatedStorageUsed / totalStorageGB) * 100, 100);
 
       const aiModelStatus = 'Operational';
@@ -113,9 +100,6 @@ export class DashboardService {
     }
   }
 
-  /**
-   * Get complete dashboard overview
-   */
   async getDashboardOverview(userId?: string, userRole?: string) {
     const [weeklyActivity, recentScans, systemStatus] = await Promise.all([
       this.getWeeklyActivity(userId, userRole),
@@ -123,7 +107,6 @@ export class DashboardService {
       this.getSystemStatus(),
     ]);
 
-    // Get summary stats
     const totalScans = await this.prisma.scan.count({
       where: userRole === 'CLINICIAN' ? { clinicianId: userId } : {},
     });
@@ -149,7 +132,6 @@ export class DashboardService {
       },
     });
 
-    // Get average confidence
     const confidenceData = await this.prisma.scan.aggregate({
       _avg: { confidence: true },
       where: {

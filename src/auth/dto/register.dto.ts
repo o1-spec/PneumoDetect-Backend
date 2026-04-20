@@ -21,7 +21,7 @@ export class RegisterDto {
   @IsPhoneNumber()
   phone?: string;
 
-  // Clinician-specific fields
+
   @IsOptional()
   @IsString()
   specialization?: string;
@@ -33,7 +33,7 @@ export class RegisterDto {
   @IsString()
   licenseNumber?: string;
 
-  // Patient-specific fields
+
   @IsOptional()
   @IsDateString()
   dateOfBirth?: string;

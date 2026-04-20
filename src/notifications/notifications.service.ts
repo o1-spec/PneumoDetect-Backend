@@ -61,7 +61,6 @@ export class NotificationsService {
       );
     }
 
-    // Authorization: only the notification owner can update it
     if (notification.userId !== userId) {
       throw new ForbiddenException(
         'You do not have permission to update this notification',
@@ -76,20 +75,9 @@ export class NotificationsService {
     return new NotificationResponseDto(updatedNotification);
   }
 
-  /**
-   * Create a new notification (internal use only)
-   * - Called by other modules (e.g., Scans) when events occur
-   * - Can be called by admins via API endpoint
-   * - Validates user exists before creating
-   * 
-   * @param createDto - Notification data (title, message, type, userId)
-   * @returns Created NotificationResponseDto
-   * @throws BadRequestException if user doesn't exist
-   */
   async createNotification(
     createDto: CreateNotificationDto,
   ): Promise<NotificationResponseDto> {
-    // Verify the user exists
     const user = await this.prisma.user.findUnique({
       where: { id: createDto.userId },
     });

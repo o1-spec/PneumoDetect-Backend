@@ -101,7 +101,7 @@ export class ScansService {
     userRole: string,
     processScanDto: ProcessScanDto,
   ): Promise<ScanResponseDto> {
-    // Fetch the scan
+
     const scan = await this.prisma.scan.findUnique({
       where: { id: scanId },
       include: {
@@ -297,7 +297,7 @@ export class ScansService {
       throw new NotFoundException(`Scan with ID ${scanId} not found`);
     }
 
-    // Check ownership: only clinician who created it or admin can view
+
     if (userRole !== 'ADMIN' && scan.clinicianId !== clinicianId) {
       throw new ForbiddenException('You can only view scans you created');
     }
@@ -316,7 +316,7 @@ export class ScansService {
     clinicianId: string,
     userRole: string,
   ): Promise<ScanResponseDto[]> {
-    // Verify patient exists
+
     const patient = await this.prisma.patient.findUnique({
       where: { id: patientId },
     });
@@ -325,7 +325,7 @@ export class ScansService {
       throw new NotFoundException(`Patient with ID ${patientId} not found`);
     }
 
-    // Get all scans for this patient
+
     const scans = await this.prisma.scan.findMany({
       where: { patientId },
       include: {
@@ -350,7 +350,7 @@ export class ScansService {
       orderBy: { createdAt: 'desc' },
     });
 
-    // If not admin, filter scans to only those created by this clinician
+
     if (userRole !== 'ADMIN') {
       const filteredScans = scans.filter(scan => scan.clinicianId === clinicianId);
       if (filteredScans.length === 0) {
@@ -381,7 +381,7 @@ export class ScansService {
    * - Does NOT include image URLs or heatmaps
    */
   async getScansByPatientUser(userId: string): Promise<any[]> {
-    // First, get the patient_profiles entry to find associated Patient
+
     const patientProfile = await this.prisma.patientProfile.findUnique({
       where: { userId },
     });
@@ -390,9 +390,9 @@ export class ScansService {
       return [];
     }
 
-    // For now, since the schema links User via clinicianId, not patientId,
-    // we'll fetch scans created by the user (as a clinician creating scans)
-    // In a real implementation, you'd have a separate way to track patient ownership
+
+
+
     const scans = await this.prisma.scan.findMany({
       where: {},
       include: {
@@ -402,7 +402,7 @@ export class ScansService {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Return patient-safe fields
+
     return scans.map(scan => ({
       id: scan.id,
       result: scan.result,
@@ -435,8 +435,8 @@ export class ScansService {
       throw new NotFoundException(`Scan with ID ${scanId} not found`);
     }
 
-    // In a real implementation, verify the patient owns this scan
-    // For now, we'll check if the user has a patientProfile
+
+
     const patientProfile = await this.prisma.patientProfile.findUnique({
       where: { userId },
     });
@@ -445,7 +445,7 @@ export class ScansService {
       throw new ForbiddenException('You do not have permission to view this scan');
     }
 
-    // Generate recommendations based on result
+
     const recommendations = this.generateRecommendations(scan.result);
 
     return {
@@ -486,7 +486,7 @@ export class ScansService {
       throw new NotFoundException(`Scan with ID ${scanId} not found`);
     }
 
-    // Verify patient has access
+
     const patientProfile = await this.prisma.patientProfile.findUnique({
       where: { userId },
     });
@@ -546,7 +546,7 @@ export class ScansService {
     const results: Result[] = ['PNEUMONIA_DETECTED' as any, 'NORMAL'];
     const randomResult = results[Math.floor(Math.random() * results.length)];
     
-    // Generate confidence between 0.85 and 0.99
+
     const confidence = parseFloat((Math.random() * 0.14 + 0.85).toFixed(4));
 
     return {

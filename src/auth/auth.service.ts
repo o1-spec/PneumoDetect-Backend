@@ -29,7 +29,6 @@ export class AuthService {
       throw new BadRequestException('User with this email already exists');
     }
 
-    // Validate patient-specific fields if role is PATIENT
     if (role === Role.PATIENT) {
       if (!dateOfBirth || !gender) {
         throw new BadRequestException('dateOfBirth and gender are required for PATIENT role');
@@ -53,7 +52,6 @@ export class AuthService {
       },
     });
 
-    // Create patient profile if role is PATIENT
     if (role === Role.PATIENT && dateOfBirth && gender) {
       await this.prisma.patientProfile.create({
         data: {
@@ -97,7 +95,6 @@ export class AuthService {
       throw new UnauthorizedException('User account is inactive');
     }
 
-    // Track login history
     if (req) {
       const ipAddress = req.ip || req.connection?.remoteAddress || 'UNKNOWN';
       const userAgent = req.headers?.['user-agent'] || 'UNKNOWN';
@@ -214,7 +211,6 @@ export class AuthService {
   async logout(userId?: string): Promise<{ message: string }> {
     if (userId) {
       try {
-        // Find the most recent login record without a logout time
         const recentLogin = await this.prisma.loginHistory.findFirst({
           where: {
             userId,

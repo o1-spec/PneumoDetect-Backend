@@ -23,7 +23,7 @@ export class PatientsService {
   async createPatient(createPatientDto: CreatePatientDto): Promise<PatientResponseDto> {
     const { idNumber, name, age, gender } = createPatientDto;
 
-    // Check if patient with this idNumber already exists
+
     const existingPatient = await this.prisma.patient.findUnique({
       where: { idNumber },
     });
@@ -34,12 +34,12 @@ export class PatientsService {
       );
     }
 
-    // Validate age
+
     if (age < 0 || age > 150) {
       throw new BadRequestException('Age must be between 0 and 150');
     }
 
-    // Create the patient
+
     const patient = await this.prisma.patient.create({
       data: {
         idNumber,
@@ -49,8 +49,8 @@ export class PatientsService {
       },
     });
 
-    // Note: In a real system, you'd have a doctorId to notify
-    // For now, we'll create a system notification
+
+
     try {
       await this.notificationsService.createNotification({
         userId: 'admin', // This should be the doctor's ID in a real system
@@ -142,7 +142,7 @@ export class PatientsService {
     patientId: string,
     updateData: Partial<CreatePatientDto>,
   ): Promise<PatientResponseDto> {
-    // Verify patient exists
+
     const patient = await this.prisma.patient.findUnique({
       where: { id: patientId },
     });
@@ -153,7 +153,7 @@ export class PatientsService {
       );
     }
 
-    // Prevent updating idNumber (immutable)
+
     const { idNumber, ...updateFields } = updateData;
 
     const updatedPatient = await this.prisma.patient.update({

@@ -17,7 +17,7 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     await this.prisma.$disconnect();
   }
 
-  // Proxy methods
+
   get $connect() {
     return this.prisma.$connect.bind(this.prisma);
   }
