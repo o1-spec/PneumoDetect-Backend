@@ -100,43 +100,15 @@ export class DashboardService {
       const aiModelStatus = 'Operational';
 
       return {
-        aiModel: {
-          name: 'AI Model',
-          status: aiModelStatus,
-          statusCode: 'operational',
-        },
-        database: {
-          name: 'Database',
-          status: dbStatus,
-          statusCode: dbStatus === 'Connected' ? 'connected' : 'error',
-          recordCount: dbCheck,
-        },
-        storage: {
-          name: 'Storage',
-          status: `${storagePercentage.toFixed(1)}% Used`,
-          statusCode: storagePercentage > 90 ? 'warning' : 'operational',
-          usedGB: estimatedStorageUsed.toFixed(2),
-          totalGB: totalStorageGB,
-          percentage: storagePercentage.toFixed(1),
-        },
+        aiModel: aiModelStatus,
+        database: dbStatus,
+        storage: `${storagePercentage.toFixed(1)}% Used`,
       };
     } catch (error) {
       return {
-        aiModel: {
-          name: 'AI Model',
-          status: 'Unknown',
-          statusCode: 'error',
-        },
-        database: {
-          name: 'Database',
-          status: 'Disconnected',
-          statusCode: 'error',
-        },
-        storage: {
-          name: 'Storage',
-          status: 'Unknown',
-          statusCode: 'error',
-        },
+        aiModel: 'Unknown',
+        database: 'Disconnected',
+        storage: 'Unknown',
       };
     }
   }
