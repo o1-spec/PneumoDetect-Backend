@@ -302,4 +302,143 @@ export class UsersService {
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       .slice(0, limit);
   }
+
+  /**
+   * Get patient profile information
+   * - Only for PATIENT role users
+   * - Returns personal and health information
+   */
+  async getPatientProfile(userId: string): Promise<any> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const patientProfile = await this.prisma.patientProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!patientProfile) {
+      throw new NotFoundException('Patient profile not found');
+    }
+
+    // Calculate age from date of birth
+    const today = new Date();
+    const birthDate = new Date(patientProfile.dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    return {
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      phone: user.phone,
+      dateOfBirth: patientProfile.dateOfBirth,
+      age,
+      gender: patientProfile.gender,
+      bloodType: patientProfile.bloodType,
+      medicalHistory: patientProfile.medicalHistory,
+      emergencyContact: {
+        name: patientProfile.emergencyContactName,
+        phone: patientProfile.emergencyContactPhone,
+        relationship: patientProfile.emergencyContactRelationship,
+      },
+      createdAt: user.createdAt,
+      updatedAt: patientProfile.updatedAt,
+    };
+  }
+
+  /**
+   * Update patient profile information
+   * - PATIENT can only edit their own profile
+   * - ADMIN can edit any patient profile
+   */
+  async updatePatientProfile(userId: string, updateDto: any, userRole: string): Promise<any> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const patientProfile = await this.prisma.patientProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!patientProfile) {
+      throw new NotFoundException('Patient profile not found');
+    }
+
+    // Update user fields if provided
+    if (updateDto.name || updateDto.phone) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          name: updateDto.name || user.name,
+          phone: updateDto.phone || user.phone,
+        },
+      });
+    }
+
+    // Update patient profile fields
+    const updateData: any = {};
+
+    if (updateDto.dateOfBirth) {
+      updateData.dateOfBirth = new Date(updateDto.dateOfBirth);
+    }
+    if (updateDto.gender) {
+      updateData.gender = updateDto.gender;
+    }
+    if (updateDto.bloodType !== undefined) {
+      updateData.bloodType = updateDto.bloodType || null;
+    }
+    if (updateDto.medicalHistory !== undefined) {
+      updateData.medicalHistory = updateDto.medicalHistory || null;
+    }
+    if (updateDto.emergencyContact) {
+      updateData.emergencyContactName = updateDto.emergencyContact.name || null;
+      updateData.emergencyContactPhone = updateDto.emergencyContact.phone || null;
+      updateData.emergencyContactRelationship = updateDto.emergencyContact.relationship || null;
+    }
+
+    const updated = await this.prisma.patientProfile.update({
+      where: { userId },
+      data: updateData,
+    });
+
+    // Calculate age from date of birth
+    const today = new Date();
+    const birthDate = new Date(updated.dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    return {
+      userId: user.id,
+      email: user.email,
+      name: updateDto.name || user.name,
+      phone: updateDto.phone || user.phone,
+      dateOfBirth: updated.dateOfBirth,
+      age,
+      gender: updated.gender,
+      bloodType: updated.bloodType,
+      medicalHistory: updated.medicalHistory,
+      emergencyContact: {
+        name: updated.emergencyContactName,
+        phone: updated.emergencyContactPhone,
+        relationship: updated.emergencyContactRelationship,
+      },
+      updatedAt: updated.updatedAt,
+    };
+  }
 }
+

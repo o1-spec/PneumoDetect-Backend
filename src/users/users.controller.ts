@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Post, Body, UseGuards, Res, Query } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Body, UseGuards, Res, Query, Put } from '@nestjs/common';
 import type { Response } from 'express';
 import {
   ApiTags,
@@ -13,6 +13,8 @@ import { UserResponseDto } from './dto/user-response.dto';
 import { RecentActivityDto } from './dto/recent-activity.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @ApiTags('Users')
 @Controller('users')
@@ -122,4 +124,44 @@ export class UsersController {
   ): Promise<{ message: string }> {
     return this.usersService.deleteAccount(user.id, deleteAccountDto);
   }
+
+  /**
+   * Get authenticated patient's profile
+   * GET /users/patient-profile
+   * - Only accessible by PATIENT role
+   */
+  @Get('patient-profile')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PATIENT')
+  @ApiBearerAuth('access_token')
+  @ApiOperation({ summary: 'Get patient profile information' })
+  @ApiResponse({ status: 200, description: 'Patient profile retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Only PATIENT role' })
+  async getPatientProfile(@CurrentUser() user: any) {
+    return this.usersService.getPatientProfile(user.id);
+  }
+
+  /**
+   * Update authenticated patient's profile
+   * PUT /users/patient-profile
+   * - PATIENT can edit only their own profile
+   * - ADMIN can edit any patient profile
+   */
+  @Put('patient-profile')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PATIENT', 'ADMIN')
+  @ApiBearerAuth('access_token')
+  @ApiOperation({ summary: 'Update patient profile information' })
+  @ApiResponse({ status: 200, description: 'Patient profile updated' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  async updatePatientProfile(
+    @CurrentUser() user: any,
+    @Body() updateDto: any,
+  ) {
+    return this.usersService.updatePatientProfile(user.id, updateDto, user.role);
+  }
 }
+
