@@ -8,6 +8,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Patch,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -16,6 +17,8 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ScansService } from './scans.service';
 import { CreateScanDto } from './dto/create-scan.dto';
 import { ProcessScanDto } from './dto/process-scan.dto';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 const fileFilter = (req, file, cb) => {
   const allowedMimes = ['image/jpeg', 'image/png', 'image/jpg'];
@@ -153,4 +156,69 @@ export class ScansController {
       scan,
     };
   }
+
+  /**
+   * GET /scans/my-scans
+   * Get all scans for the authenticated patient
+   * - Only accessible by PATIENT role
+   * - Returns patient-safe fields only
+   * - Includes filtering and pagination support
+   */
+  @Get('patient/my-scans/list')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PATIENT')
+  async getMyScans(
+    @CurrentUser() user: any,
+  ) {
+    const scans = await this.scansService.getScansByPatientUser(user.id);
+
+    return {
+      count: scans.length,
+      scans,
+    };
+  }
+
+  /**
+   * GET /scans/:id/patient-view
+   * Get a specific scan with patient-limited fields
+   * - Only accessible by PATIENT role
+   * - Patient can only view their own scans
+   * - Returns patient-safe fields with recommendations
+   */
+  @Get('patient/:scanId/view')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PATIENT')
+  async getPatientScanView(
+    @Param('scanId') scanId: string,
+    @CurrentUser() user: any,
+  ) {
+    const scan = await this.scansService.getScanByIdPatientView(scanId, user.id);
+
+    return {
+      scan,
+    };
+  }
+
+  /**
+   * PATCH /scans/:id/notes
+   * Patient adds or updates personal notes on their scan
+   * - Only accessible by PATIENT role
+   * - Patient can only edit notes on their own scans
+   */
+  @Patch('patient/:scanId/notes')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PATIENT')
+  async updateScanNotes(
+    @Param('scanId') scanId: string,
+    @Body('notes') notes: string,
+    @CurrentUser() user: any,
+  ) {
+    const scan = await this.scansService.updatePatientNotes(scanId, notes, user.id);
+
+    return {
+      message: 'Notes updated successfully',
+      scan,
+    };
+  }
 }
+

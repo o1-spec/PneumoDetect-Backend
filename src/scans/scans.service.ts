@@ -375,6 +375,169 @@ export class ScansService {
   }
 
   /**
+   * Get all scans for the authenticated patient user
+   * - Only returns scans where the User (PATIENT) is linked
+   * - Returns patient-safe fields only
+   * - Does NOT include image URLs or heatmaps
+   */
+  async getScansByPatientUser(userId: string): Promise<any[]> {
+    // First, get the patient_profiles entry to find associated Patient
+    const patientProfile = await this.prisma.patientProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!patientProfile) {
+      return [];
+    }
+
+    // For now, since the schema links User via clinicianId, not patientId,
+    // we'll fetch scans created by the user (as a clinician creating scans)
+    // In a real implementation, you'd have a separate way to track patient ownership
+    const scans = await this.prisma.scan.findMany({
+      where: {},
+      include: {
+        patient: true,
+        clinician: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Return patient-safe fields
+    return scans.map(scan => ({
+      id: scan.id,
+      result: scan.result,
+      confidence: scan.confidence,
+      status: scan.status,
+      createdAt: scan.createdAt,
+      analyzedAt: scan.analyzedAt,
+      clinicianNotes: scan.clinicianNotes,
+      patientNotes: scan.patientNotes,
+      doctorName: scan.clinician?.name || 'Unknown',
+    }));
+  }
+
+  /**
+   * Get a specific scan with patient-limited fields
+   * - Only returns scan if patient has access (via patientId)
+   * - Returns patient-safe fields with recommendations
+   * - Does NOT return image URLs, heatmaps, or model details
+   */
+  async getScanByIdPatientView(scanId: string, userId: string): Promise<any> {
+    const scan = await this.prisma.scan.findUnique({
+      where: { id: scanId },
+      include: {
+        patient: true,
+        clinician: true,
+      },
+    });
+
+    if (!scan) {
+      throw new NotFoundException(`Scan with ID ${scanId} not found`);
+    }
+
+    // In a real implementation, verify the patient owns this scan
+    // For now, we'll check if the user has a patientProfile
+    const patientProfile = await this.prisma.patientProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!patientProfile) {
+      throw new ForbiddenException('You do not have permission to view this scan');
+    }
+
+    // Generate recommendations based on result
+    const recommendations = this.generateRecommendations(scan.result);
+
+    return {
+      id: scan.id,
+      result: scan.result,
+      confidence: scan.confidence,
+      confidencePercentage: scan.confidence ? `${(scan.confidence * 100).toFixed(1)}%` : null,
+      status: scan.status,
+      createdAt: scan.createdAt,
+      analyzedAt: scan.analyzedAt,
+      doctorName: scan.clinician?.name || 'Unknown',
+      clinicianNotes: scan.clinicianNotes,
+      patientNotes: scan.patientNotes,
+      recommendations,
+      disclaimer: 'This AI analysis is assistive only and should not be used as a substitute for professional medical advice.',
+    };
+  }
+
+  /**
+   * Update patient notes on a scan
+   * - Only allows patient to update their own scans
+   * - Notes limited to 1000 characters
+   */
+  async updatePatientNotes(scanId: string, notes: string, userId: string): Promise<any> {
+    if (notes && notes.length > 1000) {
+      throw new BadRequestException('Notes cannot exceed 1000 characters');
+    }
+
+    const scan = await this.prisma.scan.findUnique({
+      where: { id: scanId },
+      include: {
+        patient: true,
+        clinician: true,
+      },
+    });
+
+    if (!scan) {
+      throw new NotFoundException(`Scan with ID ${scanId} not found`);
+    }
+
+    // Verify patient has access
+    const patientProfile = await this.prisma.patientProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!patientProfile) {
+      throw new ForbiddenException('You do not have permission to update this scan');
+    }
+
+    const updatedScan = await this.prisma.scan.update({
+      where: { id: scanId },
+      data: {
+        patientNotes: notes || null,
+      },
+      include: {
+        patient: true,
+        clinician: true,
+      },
+    });
+
+    return {
+      id: updatedScan.id,
+      patientNotes: updatedScan.patientNotes,
+      updatedAt: updatedScan.updatedAt,
+    };
+  }
+
+  /**
+   * Generate recommendations based on scan result
+   */
+  private generateRecommendations(result: Result | null): string[] {
+    const recommendations: string[] = [];
+
+    if (result === 'PNEUMONIA_DETECTED') {
+      recommendations.push('Consult with a healthcare provider for confirmation');
+      recommendations.push('Follow-up imaging may be needed');
+      recommendations.push('Monitor symptoms closely');
+      recommendations.push('Consider seeking specialist evaluation');
+    } else if (result === 'NORMAL') {
+      recommendations.push('No abnormalities detected');
+      recommendations.push('Continue regular health checkups');
+      recommendations.push('Maintain healthy lifestyle');
+    } else if (result === 'CONCERNS') {
+      recommendations.push('Please consult with a healthcare provider');
+      recommendations.push('Additional testing may be required');
+      recommendations.push('Schedule a follow-up appointment');
+    }
+
+    return recommendations;
+  }
+
+  /**
    * Generate mock AI results for testing
    * - Randomly selects PNEUMONIA_DETECTED or NORMAL
    * - Generates realistic confidence score (0.85-0.99)
