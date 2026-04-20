@@ -1,6 +1,4 @@
 import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
@@ -8,18 +6,31 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { PasswordHelper } from './helpers/password.helper';
+import { OtpHelper } from './helpers/otp.helper';
+import { AuthValidator } from './helpers/auth.validator';
+import { UserCreator } from './helpers/user.creator';
+import { TokenBuilder } from './helpers/token.builder';
+import { LoginValidator } from './helpers/login.validator';
+import { LoginHistoryTracker } from './helpers/login-history.tracker';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService,
     private readonly mailService: MailService,
     private readonly notificationsService: NotificationsService,
+    private readonly passwordHelper: PasswordHelper,
+    private readonly otpHelper: OtpHelper,
+    private readonly authValidator: AuthValidator,
+    private readonly userCreator: UserCreator,
+    private readonly tokenBuilder: TokenBuilder,
+    private readonly loginValidator: LoginValidator,
+    private readonly loginHistoryTracker: LoginHistoryTracker,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
-    const { email, password, name, specialization, phone, role, dateOfBirth, gender, bloodType, medicalHistory } = registerDto;
+    const { email, role } = registerDto;
 
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
@@ -29,93 +40,41 @@ export class AuthService {
       throw new BadRequestException('User with this email already exists');
     }
 
+    this.authValidator.validatePatientFields(role, registerDto);
+    this.authValidator.validateClinicianFields(role, registerDto);
+
+    const user = await this.userCreator.createUser(registerDto);
+
     if (role === Role.PATIENT) {
-      if (!dateOfBirth || !gender) {
-        throw new BadRequestException('dateOfBirth and gender are required for PATIENT role');
-      }
+      await this.userCreator.createPatientProfile(user.id, registerDto);
     }
 
-    const hashedPassword = await this.hashPassword(password);
-    const otp = this.generateOtp();
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
-
-    const user = await this.prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name,
-        specialization: role === Role.CLINICIAN ? specialization : undefined,
-        phone,
-        role: role || Role.CLINICIAN,
-        otp,
-        otpExpiry,
-      },
+    const otp = this.otpHelper.generateOtp();
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { otp, otpExpiry: this.otpHelper.getOtpExpiry() },
     });
-
-    if (role === Role.PATIENT && dateOfBirth && gender) {
-      await this.prisma.patientProfile.create({
-        data: {
-          userId: user.id,
-          dateOfBirth: new Date(dateOfBirth),
-          gender,
-          bloodType,
-          medicalHistory,
-        },
-      });
-    }
 
     await this.mailService.sendOtpEmail(email, otp);
 
-    const accessToken = this.generateToken(user.id, user.email, user.role);
+    const accessToken = this.tokenBuilder.generateToken(user.id, user.email, user.role);
 
-    return this.buildAuthResponse(user, accessToken);
+    return this.tokenBuilder.buildAuthResponse(user, accessToken);
   }
 
   async login(loginDto: LoginDto, req?: any): Promise<AuthResponseDto> {
     const { email, password } = loginDto;
 
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-    });
+    const user = await this.loginValidator.validateUserExists(email);
+    await this.loginValidator.validateUserVerified(user);
+    await this.loginValidator.validatePassword(password, user.password);
+    this.loginValidator.validateUserActive(user);
 
-    if (!user) {
-      throw new UnauthorizedException('Invalid email or password');
-    }
+    await this.loginHistoryTracker.trackLogin(user.id, req);
 
-    if (!user.isVerified) {
-      throw new UnauthorizedException('Please verify your email before logging in');
-    }
+    const accessToken = this.tokenBuilder.generateToken(user.id, user.email, user.role);
 
-    const isPasswordValid = await this.verifyPassword(password, user.password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid email or password');
-    }
-
-    if (!user.isActive) {
-      throw new UnauthorizedException('User account is inactive');
-    }
-
-    if (req) {
-      const ipAddress = req.ip || req.connection?.remoteAddress || 'UNKNOWN';
-      const userAgent = req.headers?.['user-agent'] || 'UNKNOWN';
-
-      try {
-        await this.prisma.loginHistory.create({
-          data: {
-            userId: user.id,
-            ipAddress,
-            userAgent,
-            loginAt: new Date(),
-          },
-        });
-      } catch (error) {
-        console.error('Failed to track login history:', error);
-      }
-    }
-
-    const accessToken = this.generateToken(user.id, user.email, user.role);
-
-    return this.buildAuthResponse(user, accessToken);
+    return this.tokenBuilder.buildAuthResponse(user, accessToken);
   }
 
   async getProfile(userId: string): Promise<AuthResponseDto> {
@@ -127,9 +86,9 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    const accessToken = this.generateToken(user.id, user.email, user.role);
+    const accessToken = this.tokenBuilder.generateToken(user.id, user.email, user.role);
 
-    return this.buildAuthResponse(user, accessToken);
+    return this.tokenBuilder.buildAuthResponse(user, accessToken);
   }
 
   async verifyOtp(email: string, otp: string): Promise<{ message: string; user: AuthResponseDto; accessToken: string }> {
@@ -145,7 +104,7 @@ export class AuthService {
       throw new BadRequestException('Invalid OTP');
     }
 
-    if (!user.otpExpiry || new Date() > user.otpExpiry) {
+    if (!user.otpExpiry || this.otpHelper.isOtpExpired(user.otpExpiry)) {
       throw new BadRequestException('OTP has expired');
     }
 
@@ -158,8 +117,8 @@ export class AuthService {
       },
     });
 
-    const accessToken = this.generateToken(updatedUser.id, updatedUser.email, updatedUser.role);
-    const authResponse = this.buildAuthResponse(updatedUser, accessToken);
+    const accessToken = this.tokenBuilder.generateToken(updatedUser.id, updatedUser.email, updatedUser.role);
+    const authResponse = this.tokenBuilder.buildAuthResponse(updatedUser, accessToken);
 
     await this.mailService.sendWelcomeEmail(email, updatedUser.name);
 
@@ -190,15 +149,12 @@ export class AuthService {
       throw new BadRequestException('User is already verified');
     }
 
-    const otp = this.generateOtp();
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    const otp = this.otpHelper.generateOtp();
+    const otpExpiry = this.otpHelper.getOtpExpiry();
 
     await this.prisma.user.update({
       where: { email },
-      data: {
-        otp,
-        otpExpiry,
-      },
+      data: { otp, otpExpiry },
     });
 
     await this.mailService.sendOtpEmail(email, otp);
@@ -210,28 +166,7 @@ export class AuthService {
 
   async logout(userId?: string): Promise<{ message: string }> {
     if (userId) {
-      try {
-        const recentLogin = await this.prisma.loginHistory.findFirst({
-          where: {
-            userId,
-            logoutAt: null,
-          },
-          orderBy: {
-            loginAt: 'desc',
-          },
-        });
-
-        if (recentLogin) {
-          await this.prisma.loginHistory.update({
-            where: { id: recentLogin.id },
-            data: {
-              logoutAt: new Date(),
-            },
-          });
-        }
-      } catch (error) {
-        console.error('Failed to track logout:', error);
-      }
+      await this.loginHistoryTracker.trackLogout(userId);
     }
 
     return {
@@ -257,12 +192,9 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    const isPasswordValid = await this.verifyPassword(currentPassword, user.password);
-    if (!isPasswordValid) {
-      throw new BadRequestException('Current password is incorrect');
-    }
+    await this.loginValidator.validatePassword(currentPassword, user.password);
 
-    const hashedPassword = await this.hashPassword(newPassword);
+    const hashedPassword = await this.passwordHelper.hash(newPassword);
 
     await this.prisma.user.update({
       where: { id: userId },
@@ -282,46 +214,5 @@ export class AuthService {
       message: 'Password changed successfully',
     };
   }
-
-  private generateOtp(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  }
-
-  private async hashPassword(password: string): Promise<string> {
-    const saltRounds = 10;
-    return bcrypt.hash(password, saltRounds);
-  }
-
-  private async verifyPassword(password: string, hash: string): Promise<boolean> {
-    return bcrypt.compare(password, hash);
-  }
-
-  private generateToken(userId: string, email: string, role: string): string {
-    const payload = {
-      sub: userId,
-      email,
-      role,
-    };
-
-    return this.jwtService.sign(payload, {
-      secret: process.env.JWT_SECRET,
-      expiresIn: '7d',
-    });
-  }
-
-  private buildAuthResponse(user: any, accessToken: string): AuthResponseDto {
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      specialization: user.specialization,
-      phone: user.phone,
-      avatarUrl: user.avatarUrl,
-      isActive: user.isActive,
-      isVerified: user.isVerified,
-      createdAt: user.createdAt,
-      accessToken,
-    };
-  }
 }
+

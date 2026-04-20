@@ -7,6 +7,13 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { PrismaModule } from '../prisma/prisma.module';
 import { MailModule } from '../mail/mail.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PasswordHelper } from './helpers/password.helper';
+import { OtpHelper } from './helpers/otp.helper';
+import { AuthValidator } from './helpers/auth.validator';
+import { UserCreator } from './helpers/user.creator';
+import { TokenBuilder } from './helpers/token.builder';
+import { LoginValidator } from './helpers/login.validator';
+import { LoginHistoryTracker } from './helpers/login-history.tracker';
 
 @Module({
   imports: [
@@ -20,7 +27,17 @@ import { NotificationsModule } from '../notifications/notifications.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    PasswordHelper,
+    OtpHelper,
+    AuthValidator,
+    UserCreator,
+    TokenBuilder,
+    LoginValidator,
+    LoginHistoryTracker,
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}
