@@ -58,11 +58,11 @@ export class DashboardService {
   async getRecentScans(limit: number = 10, userId?: string, userRole?: string) {
     const scans = await this.prisma.scan.findMany({
       where: {
-        ...(userRole === 'CLINICIAN' && { doctorId: userId }),
+        ...(userRole === 'CLINICIAN' && { clinicianId: userId }),
       },
       include: {
         patient: true,
-        doctor: true,
+        clinician: true,
       },
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -77,7 +77,7 @@ export class DashboardService {
       status: scan.status,
       createdAt: scan.createdAt,
       imageUrl: scan.imageUrl,
-      doctorName: scan.doctor.name,
+      doctorName: scan.clinician.name,
     }));
   }
 
@@ -153,13 +153,13 @@ export class DashboardService {
 
     // Get summary stats
     const totalScans = await this.prisma.scan.count({
-      where: userRole === 'CLINICIAN' ? { doctorId: userId } : {},
+      where: userRole === 'CLINICIAN' ? { clinicianId: userId } : {},
     });
 
     const pneumoniaScans = await this.prisma.scan.count({
       where: {
-        result: 'PNEUMONIA',
-        ...(userRole === 'CLINICIAN' && { doctorId: userId }),
+        result: 'PNEUMONIA_DETECTED' as any,
+        ...(userRole === 'CLINICIAN' && { clinicianId: userId }),
       },
     });
 

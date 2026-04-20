@@ -1,4 +1,5 @@
-import { IsEmail, IsString, MinLength, IsOptional, IsPhoneNumber } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsPhoneNumber, IsEnum, IsDateString, IsIn } from 'class-validator';
+import { Role, Gender } from '@prisma/client';
 
 export class RegisterDto {
   @IsEmail()
@@ -13,11 +14,39 @@ export class RegisterDto {
   @IsString()
   name: string;
 
+  @IsEnum(Role)
+  role: Role;
+
+  @IsOptional()
+  @IsPhoneNumber()
+  phone?: string;
+
+  // Clinician-specific fields
   @IsOptional()
   @IsString()
   specialization?: string;
 
   @IsOptional()
-  @IsPhoneNumber()
-  phone?: string;
+  yearsOfExperience?: number;
+
+  @IsOptional()
+  @IsString()
+  licenseNumber?: string;
+
+  // Patient-specific fields
+  @IsOptional()
+  @IsDateString()
+  dateOfBirth?: string;
+
+  @IsOptional()
+  @IsEnum(Gender)
+  gender?: Gender;
+
+  @IsOptional()
+  @IsString()
+  bloodType?: string;
+
+  @IsOptional()
+  @IsString()
+  medicalHistory?: string;
 }

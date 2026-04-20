@@ -37,7 +37,7 @@ export class AnalyticsService {
     }
 
     return {
-      doctorId: userId,
+      clinicianId: userId,
     };
   }
 
@@ -45,7 +45,7 @@ export class AnalyticsService {
    * Calculate all statistics from scans array
    * Counts:
    * - Total, completed, processing, failed scans
-   * - Pneumonia and normal cases
+   * - Pneumonia_detected and normal cases
    * - Average confidence score
    */
   private calculateStats(
@@ -67,7 +67,7 @@ export class AnalyticsService {
       (s) => s.status === 'COMPLETED' && s.result !== null,
     );
     const pneumoniaCases = completedWithResults.filter(
-      (s) => s.result === 'PNEUMONIA',
+      (s) => s.result === 'PNEUMONIA_DETECTED',
     ).length;
     const normalCases = completedWithResults.filter(
       (s) => s.result === 'NORMAL',

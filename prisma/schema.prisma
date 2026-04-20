@@ -10,23 +10,26 @@ datasource db {
 enum Role {
   ADMIN
   CLINICIAN
+  PATIENT
 }
 
 enum Gender {
   MALE
   FEMALE
+  OTHER
 }
 
 enum ScanStatus {
-  UPLOADED
+  PENDING
   PROCESSING
   COMPLETED
   FAILED
 }
 
 enum Result {
-  PNEUMONIA
+  PNEUMONIA_DETECTED
   NORMAL
+  CONCERNS
 }
 
 enum NotificationType {
@@ -54,6 +57,7 @@ model User {
   scans          Scan[]
   notifications  Notification[]
   loginHistory   LoginHistory[]
+  patientProfile PatientProfile?
 }
 
 model Patient {
@@ -68,22 +72,51 @@ model Patient {
   scans          Scan[]
 }
 
+model PatientProfile {
+  id             String         @id @default(uuid())
+  userId         String         @unique
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateOfBirth    DateTime       @db.Date
+  gender         Gender
+  bloodType      String?
+  medicalHistory String?        @db.Text
+  
+  emergencyContactName       String?
+  emergencyContactPhone      String?
+  emergencyContactRelationship String?
+  
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([userId])
+}
+
 model Scan {
   id             String         @id @default(uuid())
   imageUrl       String
   heatmapUrl     String?
-  status         ScanStatus     @default(UPLOADED)
+  status         ScanStatus     @default(PENDING)
   result         Result?
   confidence     Float?
   modelVersion   String?
+  
+  clinicianNotes String?        @db.Text
+  patientNotes   String?        @db.Text
+  analyzedAt     DateTime?
+  patientViewedAt DateTime?
+  isSharedWithPatient Boolean    @default(true)
+  
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
   patientId      String
   patient        Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
-  doctorId       String
-  doctor         User           @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  clinicianId    String
+  clinician      User           @relation(fields: [clinicianId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, createdAt])
+  @@index([clinicianId])
 }
 
 model Notification {

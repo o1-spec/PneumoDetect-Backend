@@ -45,4 +45,8 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   get loginHistory() {
     return this.prisma.loginHistory;
   }
+
+  get patientProfile() {
+    return this.prisma.patientProfile;
+  }
 }

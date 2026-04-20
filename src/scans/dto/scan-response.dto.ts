@@ -20,8 +20,8 @@ export class ScanResponseDto {
     gender: string;
   };
 
-  doctorId: string;
-  doctor: {
+  clinicianId: string;
+  clinician: {
     id: string;
     email: string;
     name: string | null;

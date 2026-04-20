@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -18,7 +19,7 @@ export class AuthService {
   ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
-    const { email, password, name, specialization, phone } = registerDto;
+    const { email, password, name, specialization, phone, role, dateOfBirth, gender, bloodType, medicalHistory } = registerDto;
 
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
@@ -28,8 +29,14 @@ export class AuthService {
       throw new BadRequestException('User with this email already exists');
     }
 
-    const hashedPassword = await this.hashPassword(password);
+    // Validate patient-specific fields if role is PATIENT
+    if (role === Role.PATIENT) {
+      if (!dateOfBirth || !gender) {
+        throw new BadRequestException('dateOfBirth and gender are required for PATIENT role');
+      }
+    }
 
+    const hashedPassword = await this.hashPassword(password);
     const otp = this.generateOtp();
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -38,12 +45,26 @@ export class AuthService {
         email,
         password: hashedPassword,
         name,
-        specialization,
+        specialization: role === Role.CLINICIAN ? specialization : undefined,
         phone,
+        role: role || Role.CLINICIAN,
         otp,
         otpExpiry,
       },
     });
+
+    // Create patient profile if role is PATIENT
+    if (role === Role.PATIENT && dateOfBirth && gender) {
+      await this.prisma.patientProfile.create({
+        data: {
+          userId: user.id,
+          dateOfBirth: new Date(dateOfBirth),
+          gender,
+          bloodType,
+          medicalHistory,
+        },
+      });
+    }
 
     await this.mailService.sendOtpEmail(email, otp);
 

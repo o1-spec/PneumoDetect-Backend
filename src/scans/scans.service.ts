@@ -27,7 +27,7 @@ export class ScansService {
     createScanDto: CreateScanDto,
     fileBuffer: Buffer,
     fileName: string,
-    doctorId: string,
+    clinicianId: string,
   ): Promise<ScanResponseDto> {
     const { patientId } = createScanDto;
 
@@ -50,8 +50,8 @@ export class ScansService {
         data: {
           imageUrl: uploadedFile.secure_url,
           patientId,
-          doctorId,
-          status: 'UPLOADED',
+          clinicianId,
+          status: 'PROCESSING' as any,
         },
         include: {
           patient: {
@@ -63,7 +63,7 @@ export class ScansService {
               gender: true,
             },
           },
-          doctor: {
+          clinician: {
             select: {
               id: true,
               email: true,
@@ -75,7 +75,7 @@ export class ScansService {
       });
 
       await this.notificationsService.createNotification({
-        userId: doctorId,
+        userId: clinicianId,
         title: 'Scan Uploaded Successfully',
         message: `X-ray for patient ${patient.name} has been uploaded. Click to process.`,
         type: 'SCAN',
@@ -91,13 +91,13 @@ export class ScansService {
 
   /**
    * Process a scan with mock AI results
-   * - Only allows doctor who created scan or admin
+   * - Only allows clinician who created scan or admin
    * - Updates status to PROCESSING then COMPLETED
-   * - Sets mock AI results: result (PNEUMONIA/NORMAL), confidence (0.85-0.99)
+   * - Sets mock AI results: result (PNEUMONIA_DETECTED/NORMAL), confidence (0.85-0.99)
    */
   async processScan(
     scanId: string,
-    doctorId: string,
+    clinicianId: string,
     userRole: string,
     processScanDto: ProcessScanDto,
   ): Promise<ScanResponseDto> {
@@ -114,7 +114,7 @@ export class ScansService {
             gender: true,
           },
         },
-        doctor: {
+        clinician: {
           select: {
             id: true,
             email: true,
@@ -129,14 +129,14 @@ export class ScansService {
       throw new NotFoundException(`Scan with ID ${scanId} not found`);
     }
 
-    if (userRole !== 'ADMIN' && scan.doctorId !== doctorId) {
+    if (userRole !== 'ADMIN' && scan.clinicianId !== clinicianId) {
       throw new ForbiddenException(
         'You can only process scans you created or you are an admin',
       );
     }
 
     await this.notificationsService.createNotification({
-      userId: doctorId,
+      userId: clinicianId,
       title: 'Scan Processing Started',
       message: `X-ray for patient ${scan.patient.name} is being analyzed. Please wait...`,
       type: 'SCAN',
@@ -147,7 +147,7 @@ export class ScansService {
       mockResults = this.generateMockAIResults();
     } catch (error) {
       await this.notificationsService.createNotification({
-        userId: doctorId,
+        userId: clinicianId,
         title: 'Scan Processing Failed',
         message: `An error occurred while processing the X-ray for patient ${scan.patient.name}. Please try again.`,
         type: 'SYSTEM',
@@ -174,7 +174,7 @@ export class ScansService {
             gender: true,
           },
         },
-        doctor: {
+        clinician: {
           select: {
             id: true,
             email: true,
@@ -191,21 +191,21 @@ export class ScansService {
         
         if (updatedScan.confidence > 0.90) {
           await this.notificationsService.createNotification({
-            userId: scan.doctorId,
+            userId: scan.clinicianId,
             title: 'High Confidence Result',
             message: `Scan shows ${updatedScan.result} with ${confidencePercent}% confidence for patient ${updatedScan.patient.name}`,
             type: 'SCAN',
           });
         } else if (updatedScan.confidence < 0.70) {
           await this.notificationsService.createNotification({
-            userId: scan.doctorId,
+            userId: scan.clinicianId,
             title: 'Low Confidence - Manual Review Recommended',
             message: `Scan confidence is ${confidencePercent}% for patient ${updatedScan.patient.name}. Please review manually.`,
             type: 'SYSTEM',
           });
         } else {
           await this.notificationsService.createNotification({
-            userId: scan.doctorId,
+            userId: scan.clinicianId,
             title: 'Scan Completed',
             message: `Your scan result is ready for patient ${updatedScan.patient.name}`,
             type: 'SCAN',
@@ -220,21 +220,21 @@ export class ScansService {
   }
 
   /**
-   * Get all scans for the current doctor
+   * Get all scans for the current clinician
    * - If user is ADMIN, return all scans
-   * - Otherwise, return only scans created by this doctor
-   * - Include patient and doctor info
+   * - Otherwise, return only scans created by this clinician
+   * - Include patient and clinician info
    * - Order by newest first
    */
   async getScansByDoctor(
-    doctorId: string,
+    clinicianId: string,
     userRole: string,
   ): Promise<ScanResponseDto[]> {
     const scans = await this.prisma.scan.findMany({
       where:
         userRole === 'ADMIN'
           ? {} // Admin sees all scans
-          : { doctorId }, // Doctor sees only their scans
+          : { clinicianId }, // Clinician sees only their scans
       include: {
         patient: {
           select: {
@@ -245,7 +245,7 @@ export class ScansService {
             gender: true,
           },
         },
-        doctor: {
+        clinician: {
           select: {
             id: true,
             email: true,
@@ -262,12 +262,12 @@ export class ScansService {
 
   /**
    * Get a single scan by ID
-   * - Only allows owner doctor or admin
-   * - Include patient and doctor info
+   * - Only allows owner clinician or admin
+   * - Include patient and clinician info
    */
   async getScanById(
     scanId: string,
-    doctorId: string,
+    clinicianId: string,
     userRole: string,
   ): Promise<ScanResponseDto> {
     const scan = await this.prisma.scan.findUnique({
@@ -282,7 +282,7 @@ export class ScansService {
             gender: true,
           },
         },
-        doctor: {
+        clinician: {
           select: {
             id: true,
             email: true,
@@ -297,8 +297,8 @@ export class ScansService {
       throw new NotFoundException(`Scan with ID ${scanId} not found`);
     }
 
-    // Check ownership: only doctor who created it or admin can view
-    if (userRole !== 'ADMIN' && scan.doctorId !== doctorId) {
+    // Check ownership: only clinician who created it or admin can view
+    if (userRole !== 'ADMIN' && scan.clinicianId !== clinicianId) {
       throw new ForbiddenException('You can only view scans you created');
     }
 
@@ -307,13 +307,13 @@ export class ScansService {
 
   /**
    * Get all scans for a specific patient
-   * - Only allows doctor who created scans for that patient or admin
-   * - Include patient and doctor info
+   * - Only allows clinician who created scans for that patient or admin
+   * - Include patient and clinician info
    * - Order by newest first
    */
   async getScansByPatient(
     patientId: string,
-    doctorId: string,
+    clinicianId: string,
     userRole: string,
   ): Promise<ScanResponseDto[]> {
     // Verify patient exists
@@ -338,7 +338,7 @@ export class ScansService {
             gender: true,
           },
         },
-        doctor: {
+        clinician: {
           select: {
             id: true,
             email: true,
@@ -350,9 +350,9 @@ export class ScansService {
       orderBy: { createdAt: 'desc' },
     });
 
-    // If not admin, filter scans to only those created by this doctor
+    // If not admin, filter scans to only those created by this clinician
     if (userRole !== 'ADMIN') {
-      const filteredScans = scans.filter(scan => scan.doctorId === doctorId);
+      const filteredScans = scans.filter(scan => scan.clinicianId === clinicianId);
       if (filteredScans.length === 0) {
         throw new ForbiddenException(
           'You can only view scans you created for this patient',
@@ -376,11 +376,11 @@ export class ScansService {
 
   /**
    * Generate mock AI results for testing
-   * - Randomly selects PNEUMONIA or NORMAL
+   * - Randomly selects PNEUMONIA_DETECTED or NORMAL
    * - Generates realistic confidence score (0.85-0.99)
    */
   private generateMockAIResults(): { result: Result; confidence: number } {
-    const results: Result[] = ['PNEUMONIA', 'NORMAL'];
+    const results: Result[] = ['PNEUMONIA_DETECTED' as any, 'NORMAL'];
     const randomResult = results[Math.floor(Math.random() * results.length)];
     
     // Generate confidence between 0.85 and 0.99

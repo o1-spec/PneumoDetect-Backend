@@ -146,7 +146,7 @@ export class UsersService {
 
     try {
       await this.prisma.scan.deleteMany({
-        where: { doctorId: userId },
+        where: { clinicianId: userId },
       });
 
       await this.prisma.notification.deleteMany({
