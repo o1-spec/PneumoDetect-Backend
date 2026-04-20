@@ -28,7 +28,7 @@ export interface TimelineEntry {
 export class ScanResultsBuilder {
   calculateResultBreakdown(scans: any[]): ResultBreakdown {
     const pneumoniaCount = scans.filter(
-      (s) => s.result === 'PNEUMONIA_DETECTED',
+      (s) => s.result === 'PNEUMONIA',
     ).length;
     const normalCount = scans.filter((s) => s.result === 'NORMAL').length;
     const concernsCount = scans.filter((s) => s.result === 'CONCERNS').length;
@@ -92,7 +92,7 @@ export class ScanResultsBuilder {
       const dayScansPneumonia = scans.filter(
         (s) =>
           s.createdAt.toISOString().split('T')[0] === dateStr &&
-          s.result === 'PNEUMONIA_DETECTED',
+          s.result === 'PNEUMONIA',
       );
       const dayScansNormal = scans.filter(
         (s) =>

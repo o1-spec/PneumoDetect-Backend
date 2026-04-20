@@ -93,7 +93,7 @@ export class ScansService {
    * Process a scan with mock AI results
    * - Only allows clinician who created scan or admin
    * - Updates status to PROCESSING then COMPLETED
-   * - Sets mock AI results: result (PNEUMONIA_DETECTED/NORMAL), confidence (0.85-0.99)
+   * - Sets mock AI results: result (PNEUMONIA/NORMAL), confidence (0.85-0.99)
    */
   async processScan(
     scanId: string,
@@ -519,7 +519,7 @@ export class ScansService {
   private generateRecommendations(result: Result | null): string[] {
     const recommendations: string[] = [];
 
-    if (result === 'PNEUMONIA_DETECTED') {
+    if (result === 'PNEUMONIA') {
       recommendations.push('Consult with a healthcare provider for confirmation');
       recommendations.push('Follow-up imaging may be needed');
       recommendations.push('Monitor symptoms closely');
@@ -539,11 +539,11 @@ export class ScansService {
 
   /**
    * Generate mock AI results for testing
-   * - Randomly selects PNEUMONIA_DETECTED or NORMAL
+   * - Randomly selects PNEUMONIA or NORMAL
    * - Generates realistic confidence score (0.85-0.99)
    */
   private generateMockAIResults(): { result: Result; confidence: number } {
-    const results: Result[] = ['PNEUMONIA_DETECTED' as any, 'NORMAL'];
+    const results: Result[] = ['PNEUMONIA', 'NORMAL'];
     const randomResult = results[Math.floor(Math.random() * results.length)];
     
 

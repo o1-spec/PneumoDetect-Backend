@@ -27,7 +27,7 @@ enum ScanStatus {
 }
 
 enum Result {
-  PNEUMONIA_DETECTED
+  PNEUMONIA
   NORMAL
   CONCERNS
 }

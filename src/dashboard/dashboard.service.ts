@@ -113,7 +113,7 @@ export class DashboardService {
 
     const pneumoniaScans = await this.prisma.scan.count({
       where: {
-        result: 'PNEUMONIA_DETECTED' as any,
+        result: 'PNEUMONIA',
         ...(userRole === 'CLINICIAN' && { clinicianId: userId }),
       },
     });

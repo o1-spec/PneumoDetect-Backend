@@ -58,7 +58,7 @@ export class AnalyticsService {
       (s) => s.status === 'COMPLETED' && s.result !== null,
     );
     const pneumoniaCases = completedWithResults.filter(
-      (s) => s.result === 'PNEUMONIA_DETECTED',
+      (s) => s.result === 'PNEUMONIA',
     ).length;
     const normalCases = completedWithResults.filter(
       (s) => s.result === 'NORMAL',
@@ -162,7 +162,7 @@ export class AnalyticsService {
     }
 
     const pneumoniaCount = scans.filter(
-      (s) => s.result === 'PNEUMONIA_DETECTED',
+      (s) => s.result === 'PNEUMONIA',
     ).length;
     const normalCount = scans.filter((s) => s.result === 'NORMAL').length;
     const concernsCount = scans.filter((s) => s.result === 'CONCERNS').length;
@@ -219,7 +219,7 @@ export class AnalyticsService {
       const dayScansPneumonia = scans.filter(
         (s) =>
           s.createdAt.toISOString().split('T')[0] === dateStr &&
-          s.result === 'PNEUMONIA_DETECTED',
+          s.result === 'PNEUMONIA',
       );
       const dayScansNormal = scans.filter(
         (s) =>
@@ -262,6 +262,81 @@ export class AnalyticsService {
       timelineData,
       totalScans: total,
       averageConfidence,
+    };
+  }
+
+  /**
+   * Get patient analytics
+   * - Total patients in system
+   * - New patients this month
+   * - Patients with pneumonia detection
+   * - Average scans per patient
+   * - Top patients by scan count
+   */
+  async getPatientAnalytics() {
+    const totalPatients = await this.prisma.patient.count();
+    
+    const currentDate = new Date();
+    const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    
+    const newPatientsThisMonth = await this.prisma.patient.count({
+      where: {
+        createdAt: {
+          gte: firstDayOfMonth,
+        },
+      },
+    });
+
+    const patientsWithPneumonia = await this.prisma.patient.count({
+      where: {
+        scans: {
+          some: {
+            result: 'PNEUMONIA',
+          },
+        },
+      },
+    });
+
+    const totalScans = await this.prisma.scan.count();
+    const averageScansPerPatient = totalPatients > 0 
+      ? parseFloat((totalScans / totalPatients).toFixed(2))
+      : 0;
+
+    // Get top patients by scan count
+    const topPatients = await this.prisma.patient.findMany({
+      select: {
+        id: true,
+        idNumber: true,
+        name: true,
+        age: true,
+        gender: true,
+        _count: {
+          select: { scans: true },
+        },
+      },
+      orderBy: {
+        scans: {
+          _count: 'desc',
+        },
+      },
+      take: 10,
+    });
+
+    const topPatientsFormatted = topPatients.map((patient) => ({
+      id: patient.id,
+      idNumber: patient.idNumber,
+      name: patient.name,
+      age: patient.age,
+      gender: patient.gender,
+      scanCount: patient._count.scans,
+    }));
+
+    return {
+      totalPatients,
+      newPatientsThisMonth,
+      patientsWithPneumonia,
+      averageScansPerPatient,
+      topPatients: topPatientsFormatted,
     };
   }
 }

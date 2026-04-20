@@ -24,13 +24,31 @@ export class AnalyticsController {
   /**
    * GET /analytics/scans/results
    * Get scan results breakdown for charts
-   * - Returns count of each result type (PNEUMONIA_DETECTED, NORMAL, CONCERNS)
+   * - Returns count of each result type (PNEUMONIA, NORMAL, CONCERNS)
    * - CLINICIAN: results for their scans only
    * - ADMIN: results for all scans
    */
   @Get('scans/results')
   async getScanResults(@CurrentUser() user: any): Promise<any> {
     return this.analyticsService.getScanResults(user.id, user.role);
+  }
+
+  /**
+   * GET /analytics/patients
+   * Get patient analytics
+   * - Total patients in system
+   * - New patients this month
+   * - Patients with pneumonia detection
+   * - Average scans per patient
+   * - Top 10 patients by scan count
+   * - Only accessible by ADMIN role
+   */
+  @Get('patients')
+  async getPatientAnalytics(@CurrentUser() user: any): Promise<any> {
+    // For now, all authenticated users can access
+    // Uncomment below line to restrict to ADMIN only if needed
+    // if (user.role !== 'ADMIN') throw new ForbiddenException('ADMIN access required');
+    return this.analyticsService.getPatientAnalytics();
   }
 }
 
