@@ -144,13 +144,16 @@ export class AnalyticsService {
   }
 
   /**
-   * Get scan results breakdown for charts
-   * - Returns count of each result type (PNEUMONIA_DETECTED, NORMAL, CONCERNS)
+   * Get comprehensive scan results breakdown for dashboard charts
+   * - Includes result breakdown (PNEUMONIA_DETECTED vs NORMAL vs CONCERNS)
+   * - Confidence distribution (excellent, good, fair)
+   * - Daily timeline data for trend analysis
    * - Filtered by user role (CLINICIAN sees own, ADMIN sees all)
    */
   async getScanResults(userId: string, userRole: string): Promise<any> {
     const whereClause = this.buildWhereClause(userId, userRole);
 
+    // Get all completed scans with results
     const scans = await this.prisma.scan.findMany({
       where: {
         ...whereClause,
@@ -159,45 +162,135 @@ export class AnalyticsService {
           not: null,
         },
       },
+      orderBy: { createdAt: 'asc' },
     });
 
-    const pneumoniaDetected = scans.filter(
+    if (scans.length === 0) {
+      return {
+        resultBreakdown: {
+          pneumonia: 0,
+          normal: 0,
+          concerns: 0,
+          pneumoniaPercentage: 0,
+          normalPercentage: 0,
+          concernsPercentage: 0,
+        },
+        confidenceDistribution: {
+          excellent: 0,
+          good: 0,
+          fair: 0,
+        },
+        timelineData: [],
+        totalScans: 0,
+        averageConfidence: 0,
+      };
+    }
+
+    // Result breakdown
+    const pneumoniaCount = scans.filter(
       (s) => s.result === 'PNEUMONIA_DETECTED',
     ).length;
-    const normal = scans.filter((s) => s.result === 'NORMAL').length;
-    const concerns = scans.filter((s) => s.result === 'CONCERNS').length;
+    const normalCount = scans.filter((s) => s.result === 'NORMAL').length;
+    const concernsCount = scans.filter((s) => s.result === 'CONCERNS').length;
+
+    const total = scans.length;
+    const resultBreakdown = {
+      pneumonia: pneumoniaCount,
+      normal: normalCount,
+      concerns: concernsCount,
+      pneumoniaPercentage: parseFloat(
+        ((pneumoniaCount / total) * 100).toFixed(2),
+      ),
+      normalPercentage: parseFloat(((normalCount / total) * 100).toFixed(2)),
+      concernsPercentage: parseFloat(
+        ((concernsCount / total) * 100).toFixed(2),
+      ),
+    };
+
+    // Confidence distribution
+    const scansWithConfidence = scans.filter((s) => s.confidence !== null);
+    const excellent = scansWithConfidence.filter(
+      (s) => s.confidence! > 0.9,
+    ).length;
+    const good = scansWithConfidence.filter(
+      (s) => s.confidence! >= 0.8 && s.confidence! <= 0.9,
+    ).length;
+    const fair = scansWithConfidence.filter(
+      (s) => s.confidence! < 0.8,
+    ).length;
+
+    const confidenceDistribution = {
+      excellent,
+      good,
+      fair,
+    };
+
+    // Calculate average confidence
+    const totalConfidence = scansWithConfidence.reduce(
+      (sum, s) => sum + s.confidence!,
+      0,
+    );
+    const averageConfidence =
+      scansWithConfidence.length > 0
+        ? parseFloat((totalConfidence / scansWithConfidence.length).toFixed(4))
+        : 0;
+
+    // Timeline data (daily breakdown for last 7 days)
+    const timelineData: any[] = [];
+    const last7Days = new Date();
+    last7Days.setDate(last7Days.getDate() - 6);
+
+    for (let i = 0; i < 7; i++) {
+      const currentDate = new Date(last7Days);
+      currentDate.setDate(currentDate.getDate() + i);
+      const dateStr = currentDate.toISOString().split('T')[0];
+
+      const dayScansPneumonia = scans.filter(
+        (s) =>
+          s.createdAt.toISOString().split('T')[0] === dateStr &&
+          s.result === 'PNEUMONIA_DETECTED',
+      );
+      const dayScansNormal = scans.filter(
+        (s) =>
+          s.createdAt.toISOString().split('T')[0] === dateStr &&
+          s.result === 'NORMAL',
+      );
+      const dayScansConcerns = scans.filter(
+        (s) =>
+          s.createdAt.toISOString().split('T')[0] === dateStr &&
+          s.result === 'CONCERNS',
+      );
+
+      const dayScans = [...dayScansPneumonia, ...dayScansNormal, ...dayScansConcerns];
+      const dayConfidences = dayScans
+        .filter((s) => s.confidence !== null)
+        .map((s) => s.confidence!);
+      const dayAverageConfidence =
+        dayConfidences.length > 0
+          ? parseFloat(
+              (
+                dayConfidences.reduce((a, b) => a + b, 0) /
+                dayConfidences.length
+              ).toFixed(4),
+            )
+          : 0;
+
+      timelineData.push({
+        date: dateStr,
+        scans: dayScans.length,
+        pneumonia: dayScansPneumonia.length,
+        normal: dayScansNormal.length,
+        concerns: dayScansConcerns.length,
+        averageConfidence: dayAverageConfidence,
+      });
+    }
 
     return {
-      pneumoniaDetected,
-      normal,
-      concerns,
-      total: scans.length,
-      breakdown: [
-        {
-          name: 'Pneumonia Detected',
-          value: pneumoniaDetected,
-          percentage:
-            scans.length > 0
-              ? ((pneumoniaDetected / scans.length) * 100).toFixed(1)
-              : '0',
-        },
-        {
-          name: 'Normal',
-          value: normal,
-          percentage:
-            scans.length > 0
-              ? ((normal / scans.length) * 100).toFixed(1)
-              : '0',
-        },
-        {
-          name: 'Concerns',
-          value: concerns,
-          percentage:
-            scans.length > 0
-              ? ((concerns / scans.length) * 100).toFixed(1)
-              : '0',
-        },
-      ],
+      resultBreakdown,
+      confidenceDistribution,
+      timelineData,
+      totalScans: total,
+      averageConfidence,
     };
   }
 }
