@@ -9,6 +9,7 @@ export class AuthResponseDto {
   phone?: string;
   avatarUrl?: string;
   isActive: boolean;
+  isVerified?: boolean;
   createdAt: Date;
   accessToken: string;
 }

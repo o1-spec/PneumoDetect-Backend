@@ -323,6 +323,7 @@ export class AuthService {
       phone: user.phone,
       avatarUrl: user.avatarUrl,
       isActive: user.isActive,
+      isVerified: user.isVerified,
       createdAt: user.createdAt,
       accessToken,
     };
