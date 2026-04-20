@@ -174,6 +174,32 @@ export class AuthService {
     };
   }
 
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return {
+        message: 'If an account exists with this email, you will receive password reset instructions.',
+      };
+    }
+
+    const otp = this.otpHelper.generateOtp();
+    const otpExpiry = this.otpHelper.getOtpExpiry(30);
+
+    await this.prisma.user.update({
+      where: { email },
+      data: { otp, otpExpiry },
+    });
+
+    await this.mailService.sendOtpEmail(email, otp);
+
+    return {
+      message: 'If an account exists with this email, you will receive password reset instructions.',
+    };
+  }
+
   async changePassword(
     userId: string,
     currentPassword: string,
