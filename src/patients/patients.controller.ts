@@ -10,9 +10,12 @@ import {
   Query,
 } from '@nestjs/common';
 import { PatientsService } from './patients.service';
-import { CreatePatientDto } from './dto/create-patient.dto';
+import { CreatePatientDto, LinkPatientUserDto } from './dto/create-patient.dto';
 import { PatientResponseDto } from './dto/patient-response.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('patients')
 @UseGuards(JwtAuthGuard)
@@ -79,5 +82,21 @@ export class PatientsController {
     @Param('id') patientId: string,
   ): Promise<{ message: string }> {
     return this.patientsService.deletePatient(patientId);
+  }
+
+  /**
+   * Link a patient record to a registered user account
+   * PATCH /patients/:id/link-user
+   * Body: { userId } - the User.id of the PATIENT-role user to link
+   * Restricted to ADMIN only
+   */
+  @Patch(':id/link-user')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async linkPatientUser(
+    @Param('id') patientId: string,
+    @Body() linkDto: LinkPatientUserDto,
+  ): Promise<PatientResponseDto> {
+    return this.patientsService.linkPatientUser(patientId, linkDto.userId);
   }
 }

@@ -112,6 +112,7 @@ export class ScansService {
             name: true,
             age: true,
             gender: true,
+            userId: true,
           },
         },
         clinician: {
@@ -172,6 +173,7 @@ export class ScansService {
             name: true,
             age: true,
             gender: true,
+            userId: true,
           },
         },
         clinician: {
@@ -208,6 +210,15 @@ export class ScansService {
             userId: scan.clinicianId,
             title: 'Scan Completed',
             message: `Your scan result is ready for patient ${updatedScan.patient.name}`,
+            type: 'SCAN',
+          });
+        }
+
+        if (updatedScan.isSharedWithPatient && updatedScan.patient.userId) {
+          await this.notificationsService.createNotification({
+            userId: updatedScan.patient.userId,
+            title: 'Scan Results Available',
+            message: `Your recent X-ray scan has been processed. Please review the results in your dashboard.`,
             type: 'SCAN',
           });
         }
@@ -394,7 +405,11 @@ export class ScansService {
 
 
     const scans = await this.prisma.scan.findMany({
-      where: {},
+      where: {
+        patient: {
+          userId,
+        },
+      },
       include: {
         patient: true,
         clinician: true,

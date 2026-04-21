@@ -1,4 +1,4 @@
-import { IsString, IsInt, IsEnum, Min, Max } from 'class-validator';
+import { IsString, IsInt, IsEnum, IsOptional, Min, Max } from 'class-validator';
 import { Gender } from '@prisma/client';
 
 export class CreatePatientDto {
@@ -15,4 +15,13 @@ export class CreatePatientDto {
 
   @IsEnum(Gender)
   gender: Gender;
+
+  @IsOptional()
+  @IsString()
+  userId?: string;
+}
+
+export class LinkPatientUserDto {
+  @IsString()
+  userId: string;
 }

@@ -208,4 +208,60 @@ export class PatientsService {
 
     return patient !== null;
   }
+
+  /**
+   * Link a Patient clinical record to a registered User account (PATIENT role)
+   * - Allows admins to connect a clinical patient record to the patient's login
+   * - This enables scan result notifications to be delivered to the patient user
+   * - Only one patient record can be linked to each user (enforced by unique constraint)
+   */
+  async linkPatientUser(patientId: string, userId: string): Promise<PatientResponseDto> {
+    const patient = await this.prisma.patient.findUnique({
+      where: { id: patientId },
+    });
+
+    if (!patient) {
+      throw new NotFoundException(`Patient with ID ${patientId} not found`);
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    if (user.role !== 'PATIENT') {
+      throw new BadRequestException('Only users with the PATIENT role can be linked to a patient record');
+    }
+
+    // Check if this user is already linked to another patient record
+    const existingLink = await this.prisma.patient.findFirst({
+      where: { userId },
+    });
+
+    if (existingLink && existingLink.id !== patientId) {
+      throw new BadRequestException(`User is already linked to another patient record (ID: ${existingLink.id})`);
+    }
+
+    const updatedPatient = await this.prisma.patient.update({
+      where: { id: patientId },
+      data: { userId },
+    });
+
+    // Notify the patient that their records are now accessible
+    try {
+      await this.notificationsService.createNotification({
+        userId,
+        title: 'Account Linked',
+        message: `Your account has been linked to your medical records. You can now view your scan results in the app.`,
+        type: 'USER',
+      });
+    } catch (error) {
+      console.error('Failed to send link notification:', error);
+    }
+
+    return new PatientResponseDto(updatedPatient);
+  }
 }
