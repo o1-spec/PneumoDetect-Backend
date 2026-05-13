@@ -5,7 +5,6 @@ import {
   Body,
   UseGuards,
   BadRequestException,
-  Logger,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AiService, PredictionResult } from './ai.service';
@@ -15,38 +14,26 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 @Controller('ai')
 @ApiBearerAuth()
 export class AiController {
-  private readonly logger = new Logger(AiController.name);
-
   constructor(private readonly aiService: AiService) {}
 
-  /**
-   * Health check endpoint for Flask AI service
-   * GET /ai/health
-   */
   @Get('health')
-  @ApiOperation({ summary: 'Check Flask AI service health' })
-  @ApiResponse({ status: 200, description: 'AI service is healthy' })
-  @ApiResponse({ status: 503, description: 'AI service is down' })
+  @ApiOperation({ summary: 'Check Flask service health' })
+  @ApiResponse({ status: 200, description: 'Service healthy' })
+  @ApiResponse({ status: 503, description: 'Service down' })
   async checkHealth() {
     const isHealthy = await this.aiService.healthCheck();
     if (!isHealthy) {
       return {
         status: 'DOWN',
-        message: 'Flask AI service is not responding',
+        message: 'Service is not responding',
       };
     }
     return {
       status: 'UP',
-      message: 'Flask AI service is running',
+      message: 'Service is running',
     };
   }
 
-  /**
-   * Predict pneumonia from image
-   * POST /ai/predict
-   * Body: { imageUrl: string }
-   * Returns: { result: 'PNEUMONIA' | 'NORMAL', confidence: number, rawPrediction: number }
-   */
   @Post('predict')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
@@ -95,15 +82,7 @@ export class AiController {
       throw new BadRequestException('imageUrl is required');
     }
 
-    this.logger.log(
-      `Prediction request from user ${user.id} for image: ${imageUrl}`,
-    );
-
     const prediction = await this.aiService.predictPneumonia(imageUrl);
-
-    this.logger.log(
-      `Prediction result: ${prediction.result} (confidence: ${prediction.confidence})`,
-    );
 
     return prediction;
   }
@@ -152,10 +131,6 @@ export class AiController {
         'imageUrls must be a non-empty array',
       );
     }
-
-    this.logger.log(
-      `Batch prediction request from user ${user.id} for ${imageUrls.length} images`,
-    );
 
     const predictions = await Promise.all(
       imageUrls.map(async (imageUrl) => {

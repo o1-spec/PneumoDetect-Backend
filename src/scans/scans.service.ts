@@ -95,10 +95,10 @@ export class ScansService {
   }
 
   /**
-   * Process a scan with mock AI results
+   * Process a scan using AI service for prediction
    * - Only allows clinician who created scan or admin
    * - Updates status to PROCESSING then COMPLETED
-   * - Sets mock AI results: result (PNEUMONIA/NORMAL), confidence (0.85-0.99)
+   * - Sends image to Flask AI service for prediction
    */
   async processScan(
     scanId: string,
@@ -150,13 +150,9 @@ export class ScansService {
 
     let predictionResult;
     try {
-      this.logger.log(`Sending scan image to Flask AI: ${scan.imageUrl}`);
       predictionResult = await this.aiService.predictPneumonia(scan.imageUrl);
-      this.logger.log(
-        `Prediction received: ${predictionResult.result} (${predictionResult.confidence})`,
-      );
     } catch (error) {
-      this.logger.error(`AI prediction failed: ${error.message}`);
+      this.logger.error(`Prediction failed: ${error.message}`);
       await this.notificationsService.createNotification({
         userId: clinicianId,
         title: 'Scan Processing Failed',

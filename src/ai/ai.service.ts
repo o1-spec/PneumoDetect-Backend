@@ -31,9 +31,6 @@ export class AiService {
    */
   async predictPneumonia(imagePath: string): Promise<PredictionResult> {
     try {
-      this.logger.log(`Predicting pneumonia for image: ${imagePath}`);
-
-      // Check if imagePath is a URL or local file
       const imageStream = this.isUrl(imagePath)
         ? await this.downloadImage(imagePath)
         : fs.createReadStream(imagePath);
@@ -41,7 +38,6 @@ export class AiService {
       const formData = new FormData();
       formData.append('file', imageStream);
 
-      // Create axios config with form-data headers
       const config = {
         headers: formData.getHeaders(),
         timeout: 30000, // 30 seconds timeout
@@ -56,11 +52,6 @@ export class AiService {
 
       const prediction = response.data;
 
-      this.logger.debug(
-        `Raw prediction received: ${JSON.stringify(prediction)}`,
-      );
-
-      // Validate response structure
       if (!prediction.result || prediction.confidence === undefined) {
         throw new Error('Invalid prediction response from Flask');
       }
@@ -90,30 +81,24 @@ export class AiService {
       }
 
       throw new BadRequestException(
-        `AI prediction failed: ${error.message}`,
+        `Prediction failed: ${error.message}`,
       );
     }
   }
 
-  /**
-   * Health check for Flask API
-   */
   async healthCheck(): Promise<boolean> {
     try {
       const response = await axios.get(`${this.flaskApiUrl}/`, {
         timeout: 5000,
       });
-      this.logger.log('Flask API health check passed');
+      this.logger.log('Health check passed');
       return response.status === 200;
     } catch (error) {
-      this.logger.warn(`Flask API health check failed: ${error.message}`);
+      this.logger.warn(`Health check failed: ${error.message}`);
       return false;
     }
   }
 
-  /**
-   * Check if string is a URL
-   */
   private isUrl(str: string): boolean {
     try {
       new URL(str);
@@ -122,10 +107,6 @@ export class AiService {
       return false;
     }
   }
-
-  /**
-   * Download image from URL and return as stream
-   */
   private downloadImage(
     imageUrl: string,
   ): Promise<NodeJS.ReadableStream> {
