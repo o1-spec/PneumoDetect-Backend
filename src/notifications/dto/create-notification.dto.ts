@@ -1,5 +1,5 @@
-import { IsString, IsEnum, IsNotEmpty, MinLength, MaxLength } from 'class-validator';
-import { NotificationType } from '@prisma/client';
+import { IsString, IsEnum, IsNotEmpty, MinLength, MaxLength, IsOptional } from 'class-validator';
+import { NotificationType, NotificationPriority } from '@prisma/client';
 
 /**
  * DTO for creating a new notification
@@ -25,4 +25,9 @@ export class CreateNotificationDto {
   @IsString()
   @IsNotEmpty()
   userId: string;
+
+  @IsEnum(NotificationPriority)
+  @IsOptional()
+  priority?: NotificationPriority;
 }
+

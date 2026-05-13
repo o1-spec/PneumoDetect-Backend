@@ -69,7 +69,7 @@ export class NotificationsService {
 
     const updatedNotification = await this.prisma.notification.update({
       where: { id: notificationId },
-      data: { read: updateDto.read },
+      data: { isRead: updateDto.isRead ?? true },
     });
 
     return new NotificationResponseDto(updatedNotification);
@@ -92,6 +92,7 @@ export class NotificationsService {
         message: createDto.message,
         type: createDto.type,
         userId: createDto.userId,
+        priority: createDto.priority || 'NORMAL',
       },
     });
 
@@ -134,8 +135,8 @@ export class NotificationsService {
    */
   async markAllAsRead(userId: string): Promise<{ updatedCount: number }> {
     const result = await this.prisma.notification.updateMany({
-      where: { userId, read: false },
-      data: { read: true },
+      where: { userId, isRead: false },
+      data: { isRead: true },
     });
 
     return { updatedCount: result.count };

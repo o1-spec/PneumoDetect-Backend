@@ -97,7 +97,7 @@ export class UsersService {
             title: true,
             message: true,
             type: true,
-            read: true,
+            isRead: true,
             createdAt: true,
           },
         },
@@ -122,8 +122,8 @@ export class UsersService {
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },
-      scans: user.scans,
-      notifications: user.notifications,
+      scans: user.scans || [],
+      notifications: user.notifications || [],
       exportedAt: new Date().toISOString(),
     };
 

@@ -1,10 +1,10 @@
-import { IsBoolean, IsNotEmpty } from 'class-validator';
+import { IsBoolean, IsOptional } from 'class-validator';
 
 /**
  * DTO for marking a notification as read
  */
 export class UpdateNotificationDto {
   @IsBoolean()
-  @IsNotEmpty()
-  read: boolean;
+  @IsOptional()
+  isRead?: boolean;
 }

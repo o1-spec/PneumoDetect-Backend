@@ -1,4 +1,4 @@
-import { Notification, NotificationType } from '@prisma/client';
+import { Notification, NotificationType, NotificationPriority } from '@prisma/client';
 
 /**
  * Response DTO for a single notification
@@ -9,7 +9,8 @@ export class NotificationResponseDto {
   title: string;
   message: string;
   type: NotificationType;
-  read: boolean;
+  priority: NotificationPriority;
+  isRead: boolean;
   createdAt: Date;
   updatedAt: Date;
   userId: string;
@@ -19,7 +20,8 @@ export class NotificationResponseDto {
     this.title = notification.title;
     this.message = notification.message;
     this.type = notification.type;
-    this.read = notification.read;
+    this.priority = notification.priority;
+    this.isRead = notification.isRead;
     this.createdAt = notification.createdAt;
     this.updatedAt = notification.updatedAt;
     this.userId = notification.userId;
@@ -37,6 +39,6 @@ export class NotificationsListDto {
   constructor(notifications: Notification[]) {
     this.data = notifications.map(n => new NotificationResponseDto(n));
     this.count = notifications.length;
-    this.unreadCount = notifications.filter(n => !n.read).length;
+    this.unreadCount = notifications.filter(n => !n.isRead).length;
   }
 }

@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   Inject,
   forwardRef,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
@@ -13,14 +14,18 @@ import { ProcessScanDto } from './dto/process-scan.dto';
 import { ScanResponseDto } from './dto/scan-response.dto';
 import { Result } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AiService } from '../ai/ai.service';
 
 @Injectable()
 export class ScansService {
+  private readonly logger = new Logger(ScansService.name);
+
   constructor(
     private prisma: PrismaService,
     private cloudinaryService: CloudinaryService,
     @Inject(forwardRef(() => NotificationsService))
     private notificationsService: NotificationsService,
+    private aiService: AiService,
   ) {}
 
   async createScan(
@@ -143,26 +148,31 @@ export class ScansService {
       type: 'SCAN',
     });
 
-    let mockResults;
+    let predictionResult;
     try {
-      mockResults = this.generateMockAIResults();
+      this.logger.log(`Sending scan image to Flask AI: ${scan.imageUrl}`);
+      predictionResult = await this.aiService.predictPneumonia(scan.imageUrl);
+      this.logger.log(
+        `Prediction received: ${predictionResult.result} (${predictionResult.confidence})`,
+      );
     } catch (error) {
+      this.logger.error(`AI prediction failed: ${error.message}`);
       await this.notificationsService.createNotification({
         userId: clinicianId,
         title: 'Scan Processing Failed',
-        message: `An error occurred while processing the X-ray for patient ${scan.patient.name}. Please try again.`,
+        message: `An error occurred while processing the X-ray for patient ${scan.patient.name}. ${error.message}`,
         type: 'SYSTEM',
       });
-      throw new BadRequestException('Failed to process scan');
+      throw new BadRequestException(`Failed to process scan: ${error.message}`);
     }
 
     const updatedScan = await this.prisma.scan.update({
       where: { id: scanId },
       data: {
         status: 'COMPLETED',
-        result: mockResults.result,
-        confidence: mockResults.confidence,
-        modelVersion: 'mock-v1',
+        result: predictionResult.result,
+        confidence: predictionResult.confidence,
+        modelVersion: 'flask-tensorflow-v1',
         heatmapUrl: processScanDto.heatmapUrl || null,
       },
       include: {
@@ -190,41 +200,40 @@ export class ScansService {
     try {
       if (updatedScan.result && updatedScan.confidence !== null) {
         const confidencePercent = (updatedScan.confidence * 100).toFixed(1);
-        
-        if (updatedScan.confidence > 0.90) {
-          await this.notificationsService.createNotification({
-            userId: scan.clinicianId,
-            title: 'High Confidence Result',
-            message: `Scan shows ${updatedScan.result} with ${confidencePercent}% confidence for patient ${updatedScan.patient.name}`,
-            type: 'SCAN',
-          });
-        } else if (updatedScan.confidence < 0.70) {
-          await this.notificationsService.createNotification({
-            userId: scan.clinicianId,
-            title: 'Low Confidence - Manual Review Recommended',
-            message: `Scan confidence is ${confidencePercent}% for patient ${updatedScan.patient.name}. Please review manually.`,
-            type: 'SYSTEM',
-          });
-        } else {
-          await this.notificationsService.createNotification({
-            userId: scan.clinicianId,
-            title: 'Scan Completed',
-            message: `Your scan result is ready for patient ${updatedScan.patient.name}`,
-            type: 'SCAN',
-          });
-        }
+        const resultTitle =
+          updatedScan.result === 'PNEUMONIA'
+            ? 'URGENT: Pneumonia Detected'
+            : 'Scan Result: Normal';
 
+        // Notify clinician
+        await this.notificationsService.createNotification({
+          userId: scan.clinicianId,
+          title: resultTitle,
+          message: `${updatedScan.result} (${confidencePercent}% confidence) for patient ${updatedScan.patient.name}`,
+          type: 'SCAN',
+        });
+
+        // Notify patient if results are shared
         if (updatedScan.isSharedWithPatient && updatedScan.patient.userId) {
+          const patientTitle =
+            updatedScan.result === 'PNEUMONIA'
+              ? 'Scan Result - Important'
+              : 'Scan Result Ready';
+          const patientMessage =
+            updatedScan.result === 'PNEUMONIA'
+              ? `Your scan shows potential signs of pneumonia (${confidencePercent}% confidence). Please contact your healthcare provider immediately.`
+              : `Your scan is complete and shows normal results. No signs of pneumonia detected.`;
+
           await this.notificationsService.createNotification({
             userId: updatedScan.patient.userId,
-            title: 'Scan Results Available',
-            message: `Your recent X-ray scan has been processed. Please review the results in your dashboard.`,
+            title: patientTitle,
+            message: patientMessage,
             type: 'SCAN',
           });
         }
       }
     } catch (error) {
-      console.error('Failed to create scan completion notification:', error);
+      this.logger.error('Failed to create scan completion notification:', error);
     }
 
     return new ScanResponseDto(updatedScan);
@@ -550,23 +559,5 @@ export class ScansService {
     }
 
     return recommendations;
-  }
-
-  /**
-   * Generate mock AI results for testing
-   * - Randomly selects PNEUMONIA or NORMAL
-   * - Generates realistic confidence score (0.85-0.99)
-   */
-  private generateMockAIResults(): { result: Result; confidence: number } {
-    const results: Result[] = ['PNEUMONIA', 'NORMAL'];
-    const randomResult = results[Math.floor(Math.random() * results.length)];
-    
-
-    const confidence = parseFloat((Math.random() * 0.14 + 0.85).toFixed(4));
-
-    return {
-      result: randomResult as Result,
-      confidence,
-    };
   }
 }
