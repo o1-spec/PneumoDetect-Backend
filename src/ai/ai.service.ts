@@ -10,6 +10,7 @@ export interface PredictionResult {
   result: 'PNEUMONIA' | 'NORMAL';
   confidence: number;
   rawPrediction: number;
+  heatmap?: string;
 }
 
 @Injectable()
@@ -60,6 +61,7 @@ export class AiService {
         result: prediction.result,
         confidence: prediction.confidence,
         rawPrediction: prediction.raw_prediction,
+        heatmap: prediction.heatmap,
       };
     } catch (error) {
       this.logger.error(

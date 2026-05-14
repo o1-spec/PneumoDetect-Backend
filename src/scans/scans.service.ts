@@ -162,6 +162,21 @@ export class ScansService {
       throw new BadRequestException(`Failed to process scan: ${error.message}`);
     }
 
+    let heatmapUrl = processScanDto.heatmapUrl || null;
+    if (predictionResult.heatmap) {
+      try {
+        const heatmapBuffer = Buffer.from(predictionResult.heatmap, 'base64');
+        const uploadedHeatmap = await this.cloudinaryService.uploadImage(
+          heatmapBuffer,
+          `heatmap-${scanId}-${Date.now()}`,
+          'pneumodetect/heatmaps',
+        );
+        heatmapUrl = uploadedHeatmap.secure_url;
+      } catch (uploadError) {
+        this.logger.error(`Failed to upload heatmap to Cloudinary: ${uploadError.message}`);
+      }
+    }
+
     const updatedScan = await this.prisma.scan.update({
       where: { id: scanId },
       data: {
@@ -169,7 +184,7 @@ export class ScansService {
         result: predictionResult.result,
         confidence: predictionResult.confidence,
         modelVersion: 'flask-tensorflow-v1',
-        heatmapUrl: processScanDto.heatmapUrl || null,
+        heatmapUrl: heatmapUrl,
       },
       include: {
         patient: {
