@@ -45,20 +45,21 @@ enum NotificationPriority {
 }
 
 model User {
-  id             String    @id @default(uuid())
-  email          String    @unique
-  password       String
-  name           String
-  role           Role      @default(CLINICIAN)
-  specialization String?
-  phone          String?
-  avatarUrl      String?
-  isActive       Boolean   @default(true)
-  isVerified     Boolean   @default(false)
-  otp            String?
-  otpExpiry      DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                   String    @id @default(uuid())
+  email                String    @unique
+  password             String
+  name                 String
+  role                 Role      @default(CLINICIAN)
+  specialization       String?
+  phone                String?
+  avatarUrl            String?
+  isActive             Boolean   @default(true)
+  isVerified           Boolean   @default(false)
+  onboardingCompleted  Boolean   @default(false)
+  otp                  String?
+  otpExpiry            DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   scans          Scan[]
   notifications  Notification[]

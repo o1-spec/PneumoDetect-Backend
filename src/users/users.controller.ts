@@ -7,6 +7,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
+import { OnboardingService } from './onboarding.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { DeleteAccountDto } from './dto/delete-account.dto';
 import { UserResponseDto } from './dto/user-response.dto';
@@ -19,7 +20,10 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 @ApiTags('Users')
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly onboardingService: OnboardingService,
+  ) {}
 
   /**
    * Get current user profile
@@ -163,5 +167,36 @@ export class UsersController {
   ) {
     return this.usersService.updatePatientProfile(user.id, updateDto, user.role);
   }
+
+  @Get('onboarding/status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access_token')
+  @ApiOperation({ summary: 'Get onboarding status' })
+  @ApiResponse({ status: 200, description: 'Onboarding status retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getOnboardingStatus(@CurrentUser() user: any) {
+    return this.onboardingService.getOnboardingStatus(user.id);
+  }
+
+  @Post('onboarding/complete')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access_token')
+  @ApiOperation({ summary: 'Mark onboarding as completed' })
+  @ApiResponse({ status: 200, description: 'Onboarding completed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async completeOnboarding(@CurrentUser() user: any) {
+    return this.onboardingService.completeOnboarding(user.id);
+  }
+
+  @Post('onboarding/skip')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access_token')
+  @ApiOperation({ summary: 'Skip onboarding' })
+  @ApiResponse({ status: 200, description: 'Onboarding skipped' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async skipOnboarding(@CurrentUser() user: any) {
+    return this.onboardingService.skipOnboarding(user.id);
+  }
 }
+
 
