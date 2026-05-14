@@ -25,6 +25,7 @@ export class UsersService {
         phone: true,
         avatarUrl: true,
         isActive: true,
+        onboardingCompleted: true,
         createdAt: true,
         updatedAt: true,
       },

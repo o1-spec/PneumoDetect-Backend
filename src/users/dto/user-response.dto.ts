@@ -10,6 +10,7 @@ export class UserResponseDto {
   phone: string | null;
   avatarUrl: string | null;
   isActive: boolean;
+  onboardingCompleted: boolean;
   createdAt: Date;
   updatedAt: Date;
 

@@ -7,6 +7,111 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id                  String          @id @default(uuid())
+  email               String          @unique
+  password            String
+  name                String
+  role                Role            @default(CLINICIAN)
+  specialization      String?
+  phone               String?
+  avatarUrl           String?
+  isActive            Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  isVerified          Boolean         @default(false)
+  otp                 String?
+  otpExpiry           DateTime?
+  onboardingCompleted Boolean         @default(false)
+  loginHistory        LoginHistory[]
+  notifications       Notification[]
+  patientRecord       Patient?
+  patientProfile      PatientProfile?
+  scans               Scan[]
+}
+
+model Patient {
+  id        String   @id @default(uuid())
+  idNumber  String   @unique
+  name      String
+  age       Int
+  gender    Gender
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String?  @unique
+  user      User?    @relation(fields: [userId], references: [id])
+  scans     Scan[]
+}
+
+model PatientProfile {
+  id                           String   @id @default(uuid())
+  userId                       String   @unique
+  dateOfBirth                  DateTime @db.Date
+  gender                       Gender
+  bloodType                    String?
+  medicalHistory               String?
+  emergencyContactName         String?
+  emergencyContactPhone        String?
+  emergencyContactRelationship String?
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+  user                         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Scan {
+  id                  String     @id @default(uuid())
+  imageUrl            String
+  heatmapUrl          String?
+  status              ScanStatus @default(PENDING)
+  result              Result?
+  confidence          Float?
+  modelVersion        String?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  patientId           String
+  analyzedAt          DateTime?
+  clinicianId         String
+  clinicianNotes      String?
+  isSharedWithPatient Boolean    @default(true)
+  patientNotes        String?
+  patientViewedAt     DateTime?
+  clinician           User       @relation(fields: [clinicianId], references: [id], onDelete: Cascade)
+  patient             Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, createdAt])
+  @@index([clinicianId])
+}
+
+model Notification {
+  id        String               @id @default(uuid())
+  title     String
+  message   String
+  type      NotificationType
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  userId    String
+  isRead    Boolean              @default(false)
+  priority  NotificationPriority @default(NORMAL)
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model LoginHistory {
+  id        String    @id @default(cuid())
+  userId    String
+  loginAt   DateTime  @default(now())
+  logoutAt  DateTime?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, loginAt])
+}
+
 enum Role {
   ADMIN
   CLINICIAN
@@ -42,118 +147,4 @@ enum NotificationPriority {
   LOW
   NORMAL
   HIGH
-}
-
-model User {
-  id                   String    @id @default(uuid())
-  email                String    @unique
-  password             String
-  name                 String
-  role                 Role      @default(CLINICIAN)
-  specialization       String?
-  phone                String?
-  avatarUrl            String?
-  isActive             Boolean   @default(true)
-  isVerified           Boolean   @default(false)
-  onboardingCompleted  Boolean   @default(false)
-  otp                  String?
-  otpExpiry            DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-
-  scans          Scan[]
-  notifications  Notification[]
-  loginHistory   LoginHistory[]
-  patientProfile PatientProfile?
-  patientRecord  Patient?
-}
-
-model Patient {
-  id        String   @id @default(uuid())
-  idNumber  String   @unique
-  name      String
-  age       Int
-  gender    Gender
-  userId    String?  @unique
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  scans Scan[]
-}
-
-model PatientProfile {
-  id             String   @id @default(uuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dateOfBirth    DateTime @db.Date
-  gender         Gender
-  bloodType      String?
-  medicalHistory String?  @db.Text
-
-  emergencyContactName         String?
-  emergencyContactPhone        String?
-  emergencyContactRelationship String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-}
-
-model Scan {
-  id           String     @id @default(uuid())
-  imageUrl     String
-  heatmapUrl   String?
-  status       ScanStatus @default(PENDING)
-  result       Result?
-  confidence   Float?
-  modelVersion String?
-
-  clinicianNotes      String?   @db.Text
-  patientNotes        String?   @db.Text
-  analyzedAt          DateTime?
-  patientViewedAt     DateTime?
-  isSharedWithPatient Boolean   @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  patientId String
-  patient   Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
-
-  clinicianId String
-  clinician   User   @relation(fields: [clinicianId], references: [id], onDelete: Cascade)
-
-  @@index([patientId, createdAt])
-  @@index([clinicianId])
-}
-
-model Notification {
-  id       String                @id @default(uuid())
-  title    String
-  message  String
-  type     NotificationType
-  priority NotificationPriority  @default(NORMAL)
-  isRead   Boolean               @default(false)
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, createdAt])
-}
-
-model LoginHistory {
-  id        String    @id @default(cuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  loginAt   DateTime  @default(now())
-  logoutAt  DateTime?
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime  @default(now())
-
-  @@index([userId, loginAt])
 }

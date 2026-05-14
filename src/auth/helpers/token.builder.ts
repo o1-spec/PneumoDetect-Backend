@@ -30,6 +30,7 @@ export class TokenBuilder {
       avatarUrl: user.avatarUrl,
       isActive: user.isActive,
       isVerified: user.isVerified,
+      onboardingCompleted: user.onboardingCompleted,
       createdAt: user.createdAt,
       accessToken,
     };

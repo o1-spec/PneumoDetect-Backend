@@ -10,6 +10,7 @@ export class AuthResponseDto {
   avatarUrl?: string;
   isActive: boolean;
   isVerified?: boolean;
+  onboardingCompleted: boolean;
   createdAt: Date;
   accessToken: string;
 }
