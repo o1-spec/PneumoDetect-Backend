@@ -18,7 +18,7 @@ const mockNotification = (overrides: Partial<any> = {}) => ({
   title: 'Test Notification',
   message: 'This is a test message',
   type: 'SCAN',
-  read: false,
+  isRead: false,
   userId: 'user-1',
   createdAt: new Date('2026-04-21T00:00:00Z'),
   updatedAt: new Date('2026-04-21T00:00:00Z'),
@@ -62,7 +62,7 @@ describe('NotificationsService', () => {
 
   describe('getNotifications', () => {
     it('returns notifications for the given user, newest first', async () => {
-      const notifs = [mockNotification(), mockNotification({ id: 'notif-2', read: true })];
+      const notifs = [mockNotification(), mockNotification({ id: 'notif-2', isRead: true })];
       prismaMock.notification.findMany.mockResolvedValue(notifs);
 
       const result = await service.getNotifications('user-1');
@@ -117,17 +117,17 @@ describe('NotificationsService', () => {
 
   describe('markAsRead', () => {
     it('marks a notification as read when the owner requests it', async () => {
-      const updated = mockNotification({ read: true });
+      const updated = mockNotification({ isRead: true });
       prismaMock.notification.findUnique.mockResolvedValue(mockNotification());
       prismaMock.notification.update.mockResolvedValue(updated);
 
-      const result = await service.markAsRead('notif-1', 'user-1', { read: true });
+      const result = await service.markAsRead('notif-1', 'user-1', { isRead: true });
 
       expect(prismaMock.notification.update).toHaveBeenCalledWith({
         where: { id: 'notif-1' },
-        data: { read: true },
+        data: { isRead: true },
       });
-      expect(result.read).toBe(true);
+      expect(result.isRead).toBe(true);
     });
 
     it('throws ForbiddenException when a different user tries to mark as read', async () => {
@@ -135,14 +135,14 @@ describe('NotificationsService', () => {
         mockNotification({ userId: 'other-user' }),
       );
 
-      await expect(service.markAsRead('notif-1', 'user-1', { read: true }))
+      await expect(service.markAsRead('notif-1', 'user-1', { isRead: true }))
         .rejects.toThrow(ForbiddenException);
     });
 
     it('throws NotFoundException when notification does not exist', async () => {
       prismaMock.notification.findUnique.mockResolvedValue(null);
 
-      await expect(service.markAsRead('notif-999', 'user-1', { read: true }))
+      await expect(service.markAsRead('notif-999', 'user-1', { isRead: true }))
         .rejects.toThrow(NotFoundException);
     });
   });
@@ -167,6 +167,7 @@ describe('NotificationsService', () => {
           message: 'Your scan is ready.',
           type: 'SCAN',
           userId: 'user-1',
+          priority: 'NORMAL',
         },
       });
       expect(result.id).toBe('notif-1');
@@ -195,8 +196,8 @@ describe('NotificationsService', () => {
       const result = await service.markAllAsRead('user-1');
 
       expect(prismaMock.notification.updateMany).toHaveBeenCalledWith({
-        where: { userId: 'user-1', read: false },
-        data: { read: true },
+        where: { userId: 'user-1', isRead: false },
+        data: { isRead: true },
       });
       expect(result.updatedCount).toBe(5);
     });

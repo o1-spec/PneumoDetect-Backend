@@ -4,6 +4,7 @@ import { ScansService } from './scans.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AiService } from '../ai/ai.service';
 
 // ─── Mock factories ───────────────────────────────────────────────────────────
 
@@ -67,6 +68,14 @@ const notificationsMock = {
   createNotification: jest.fn().mockResolvedValue({}),
 };
 
+const aiMock = {
+  predictPneumonia: jest.fn().mockResolvedValue({
+    result: 'NORMAL',
+    confidence: 0.95,
+    rawPrediction: 0.05,
+  }),
+};
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('ScansService', () => {
@@ -79,6 +88,7 @@ describe('ScansService', () => {
         { provide: PrismaService, useValue: prismaMock },
         { provide: CloudinaryService, useValue: cloudinaryMock },
         { provide: NotificationsService, useValue: notificationsMock },
+        { provide: AiService, useValue: aiMock },
       ],
     }).compile();
 
