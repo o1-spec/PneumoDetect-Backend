@@ -6,18 +6,28 @@ export class MailService {
   private transporter: nodemailer.Transporter;
 
   constructor() {
+    const host = process.env.EMAIL_HOST || 'smtp.gmail.com';
+    const port = parseInt(process.env.EMAIL_PORT || '587', 10);
+    const secure = port === 465;
+
     this.transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host,
+      port,
+      secure,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD,
+      },
+      tls: {
+        // Prevents handshake validation timeouts inside containerized clouds like Render
+        rejectUnauthorized: false,
       },
     });
   }
 
   async sendOtpEmail(email: string, otp: string): Promise<void> {
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: process.env.EMAIL_USER || 'no-reply@pneumodetect.com',
       to: email,
       subject: 'PneumoDetect - Email Verification',
       html: `
@@ -42,14 +52,27 @@ export class MailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
+      console.log(`📧 [MailService] Verification OTP successfully sent to: ${email}`);
     } catch (error) {
-      throw new Error(`Failed to send email: ${error.message}`);
+      console.error(`❌ [MailService] SMTP email failed to send to ${email}:`, error);
+
+      const isProduction = process.env.NODE_ENV === 'production';
+      if (isProduction) {
+        throw new Error(`Failed to send email: ${error.message}`);
+      }
+
+      console.warn(
+        `\n==================================================\n` +
+        `⚠️  [MailService DEV FALLBACK] SMTP failed.\n` +
+        `   🔑 FALLBACK OTP CODE FOR TESTING: ${otp}\n` +
+        `==================================================\n`
+      );
     }
   }
 
   async sendWelcomeEmail(email: string, name: string): Promise<void> {
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: process.env.EMAIL_USER || 'no-reply@pneumodetect.com',
       to: email,
       subject: 'Welcome to PneumoDetect',
       html: `
@@ -71,8 +94,21 @@ export class MailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
+      console.log(`📧 [MailService] Welcome email successfully sent to: ${email}`);
     } catch (error) {
-      throw new Error(`Failed to send email: ${error.message}`);
+      console.error(`❌ [MailService] SMTP welcome email failed to send to ${email}:`, error);
+
+      const isProduction = process.env.NODE_ENV === 'production';
+      if (isProduction) {
+        throw new Error(`Failed to send email: ${error.message}`);
+      }
+
+      console.warn(
+        `\n==================================================\n` +
+        `⚠️  [MailService DEV FALLBACK] SMTP welcome email failed.\n` +
+        `   👋 Welcome, ${name}! Account successfully verified.\n` +
+        `==================================================\n`
+      );
     }
   }
 
@@ -81,7 +117,7 @@ export class MailService {
    */
   async sendMail(to: string, subject: string, html: string): Promise<void> {
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: process.env.EMAIL_USER || 'no-reply@pneumodetect.com',
       to,
       subject,
       html,
@@ -89,8 +125,21 @@ export class MailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
+      console.log(`📧 [MailService] Custom email successfully sent to: ${to}`);
     } catch (error) {
-      throw new Error(`Failed to send email: ${error.message}`);
+      console.error(`❌ [MailService] SMTP custom email failed to send to ${to}:`, error);
+
+      const isProduction = process.env.NODE_ENV === 'production';
+      if (isProduction) {
+        throw new Error(`Failed to send email: ${error.message}`);
+      }
+
+      console.warn(
+        `\n==================================================\n` +
+        `⚠️  [MailService DEV FALLBACK] SMTP custom email failed.\n` +
+        `   📝 Subject: ${subject}\n` +
+        `==================================================\n`
+      );
     }
   }
 }
