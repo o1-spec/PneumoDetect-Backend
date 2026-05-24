@@ -27,7 +27,7 @@ export class MailService {
 
   async sendOtpEmail(email: string, otp: string): Promise<void> {
     const mailOptions = {
-      from: process.env.EMAIL_USER || 'no-reply@pneumodetect.com',
+      from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@pneumodetect.com',
       to: email,
       subject: 'PneumoDetect - Email Verification',
       html: `
@@ -72,7 +72,7 @@ export class MailService {
 
   async sendWelcomeEmail(email: string, name: string): Promise<void> {
     const mailOptions = {
-      from: process.env.EMAIL_USER || 'no-reply@pneumodetect.com',
+      from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@pneumodetect.com',
       to: email,
       subject: 'Welcome to PneumoDetect',
       html: `
@@ -117,7 +117,7 @@ export class MailService {
    */
   async sendMail(to: string, subject: string, html: string): Promise<void> {
     const mailOptions = {
-      from: process.env.EMAIL_USER || 'no-reply@pneumodetect.com',
+      from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@pneumodetect.com',
       to,
       subject,
       html,
