@@ -28,12 +28,51 @@ export class MailService {
     });
   }
 
+  /**
+   * Helper to send emails via Resend's high-performance HTTPS API.
+   * This operates on port 443 (HTTPS), which is completely open and reliable on Render,
+   * bypassing the SMTP port blocks or IP intelligence drops.
+   */
+  private async sendEmailHttp(to: string, subject: string, html: string): Promise<boolean> {
+    const apiKey = process.env.EMAIL_PASSWORD;
+    const from = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@pneumodetect.com';
+
+    // If there's no Resend API key, skip HTTP and fall back to standard SMTP (e.g. Gmail)
+    if (!apiKey || !apiKey.startsWith('re_')) {
+      return false;
+    }
+
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          from,
+          to,
+          subject,
+          html,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Resend API returned status ${response.status}: ${errorText}`);
+      }
+
+      console.log(`📧 [MailService HTTP] Email successfully sent to: ${to} via Resend REST API (Port 443)`);
+      return true;
+    } catch (error) {
+      console.error(`❌ [MailService HTTP] Resend REST API failed to send to ${to}:`, error);
+      throw error;
+    }
+  }
+
   async sendOtpEmail(email: string, otp: string): Promise<void> {
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@pneumodetect.com',
-      to: email,
-      subject: 'PneumoDetect - Email Verification',
-      html: `
+    const subject = 'PneumoDetect - Email Verification';
+    const html = `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
           <h2>Welcome to PneumoDetect</h2>
           <p>To verify your email address and complete your registration, please use the following OTP:</p>
@@ -50,14 +89,33 @@ export class MailService {
             AI-Powered Pneumonia Detection System
           </p>
         </div>
-      `,
+      `;
+
+    // Try sending via Resend HTTPS REST API first
+    try {
+      const sentViaHttp = await this.sendEmailHttp(email, subject, html);
+      if (sentViaHttp) return;
+    } catch (error) {
+      const isProduction = process.env.NODE_ENV === 'production';
+      if (isProduction) {
+        throw new Error(`Failed to send email: ${error.message}`);
+      }
+      return; // DEV fallback will trigger in the terminal warning block below
+    }
+
+    // Fallback: SMTP Nodemailer
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@pneumodetect.com',
+      to: email,
+      subject,
+      html,
     };
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log(`📧 [MailService] Verification OTP successfully sent to: ${email}`);
+      console.log(`📧 [MailService SMTP] Verification OTP successfully sent to: ${email}`);
     } catch (error) {
-      console.error(`❌ [MailService] SMTP email failed to send to ${email}:`, error);
+      console.error(`❌ [MailService SMTP] SMTP email failed to send to ${email}:`, error);
 
       const isProduction = process.env.NODE_ENV === 'production';
       if (isProduction) {
@@ -74,11 +132,8 @@ export class MailService {
   }
 
   async sendWelcomeEmail(email: string, name: string): Promise<void> {
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@pneumodetect.com',
-      to: email,
-      subject: 'Welcome to PneumoDetect',
-      html: `
+    const subject = 'Welcome to PneumoDetect';
+    const html = `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
           <h2>Welcome, ${name}!</h2>
           <p>Your email has been verified successfully. You can now log in to PneumoDetect.</p>
@@ -92,14 +147,33 @@ export class MailService {
             AI-Powered Pneumonia Detection System
           </p>
         </div>
-      `,
+      `;
+
+    // Try sending via Resend HTTPS REST API first
+    try {
+      const sentViaHttp = await this.sendEmailHttp(email, subject, html);
+      if (sentViaHttp) return;
+    } catch (error) {
+      const isProduction = process.env.NODE_ENV === 'production';
+      if (isProduction) {
+        throw new Error(`Failed to send email: ${error.message}`);
+      }
+      return;
+    }
+
+    // Fallback: SMTP Nodemailer
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@pneumodetect.com',
+      to: email,
+      subject,
+      html,
     };
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log(`📧 [MailService] Welcome email successfully sent to: ${email}`);
+      console.log(`📧 [MailService SMTP] Welcome email successfully sent to: ${email}`);
     } catch (error) {
-      console.error(`❌ [MailService] SMTP welcome email failed to send to ${email}:`, error);
+      console.error(`❌ [MailService SMTP] SMTP welcome email failed to send to ${email}:`, error);
 
       const isProduction = process.env.NODE_ENV === 'production';
       if (isProduction) {
@@ -119,6 +193,19 @@ export class MailService {
    * Generic mail sender used for contact/support messages.
    */
   async sendMail(to: string, subject: string, html: string): Promise<void> {
+    // Try sending via Resend HTTPS REST API first
+    try {
+      const sentViaHttp = await this.sendEmailHttp(to, subject, html);
+      if (sentViaHttp) return;
+    } catch (error) {
+      const isProduction = process.env.NODE_ENV === 'production';
+      if (isProduction) {
+        throw new Error(`Failed to send email: ${error.message}`);
+      }
+      return;
+    }
+
+    // Fallback: SMTP Nodemailer
     const mailOptions = {
       from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@pneumodetect.com',
       to,
@@ -128,9 +215,9 @@ export class MailService {
 
     try {
       await this.transporter.sendMail(mailOptions);
-      console.log(`📧 [MailService] Custom email successfully sent to: ${to}`);
+      console.log(`📧 [MailService SMTP] Custom email successfully sent to: ${to}`);
     } catch (error) {
-      console.error(`❌ [MailService] SMTP custom email failed to send to ${to}:`, error);
+      console.error(`❌ [MailService SMTP] SMTP custom email failed to send to ${to}:`, error);
 
       const isProduction = process.env.NODE_ENV === 'production';
       if (isProduction) {
