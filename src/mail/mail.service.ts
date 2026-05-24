@@ -18,6 +18,9 @@ export class MailService {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD,
       },
+      connectionTimeout: 5000, // 5 seconds connection timeout
+      greetingTimeout: 5000,   // 5 seconds greeting timeout
+      socketTimeout: 10000,    // 10 seconds socket timeout
       tls: {
         // Prevents handshake validation timeouts inside containerized clouds like Render
         rejectUnauthorized: false,
