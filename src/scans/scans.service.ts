@@ -440,6 +440,8 @@ export class ScansService {
 
     return scans.map(scan => ({
       id: scan.id,
+      imageUrl: scan.imageUrl,
+      heatmapUrl: scan.heatmapUrl,
       result: scan.result,
       confidence: scan.confidence,
       status: scan.status,
@@ -453,9 +455,10 @@ export class ScansService {
 
   /**
    * Get a specific scan with patient-limited fields
-   * - Only returns scan if patient has access (via patientId)
+   * - Only accessible by PATIENT role
+   * - Patient can only view their own scans
    * - Returns patient-safe fields with recommendations
-   * - Does NOT return image URLs, heatmaps, or model details
+   * - Includes image URLs and heatmaps for visual presentation
    */
   async getScanByIdPatientView(scanId: string, userId: string): Promise<any> {
     const scan = await this.prisma.scan.findUnique({
@@ -485,6 +488,8 @@ export class ScansService {
 
     return {
       id: scan.id,
+      imageUrl: scan.imageUrl,
+      heatmapUrl: scan.heatmapUrl,
       result: scan.result,
       confidence: scan.confidence,
       confidencePercentage: scan.confidence ? `${(scan.confidence * 100).toFixed(1)}%` : null,

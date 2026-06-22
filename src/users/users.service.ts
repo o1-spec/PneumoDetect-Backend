@@ -335,8 +335,26 @@ export class UsersService {
       age--;
     }
 
+    // Resolve or automatically create Patient clinical record
+    let patientRecord = await this.prisma.patient.findUnique({
+      where: { userId },
+    });
+    if (!patientRecord) {
+      const idNumber = 'PT-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      patientRecord = await this.prisma.patient.create({
+        data: {
+          idNumber,
+          name: user.name,
+          age: age,
+          gender: patientProfile.gender,
+          userId,
+        },
+      });
+    }
+
     return {
       userId: user.id,
+      patientRecordId: patientRecord.id,
       email: user.email,
       name: user.name,
       phone: user.phone,
