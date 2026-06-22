@@ -1,1658 +1,788 @@
 # Backend API Payload Reference Guide
 ## Complete Request/Response Structures for All Endpoints
 
-**Date:** April 20, 2026  
 **Status:** ✅ Production Ready  
-**Version:** 1.0.0
+**Version:** 1.1.0 (Updated with scan updates, admin dashboards, and activity log integrations)
 
 ---
 
 ## 📋 Table of Contents
 
-1. [Authentication Payloads](#authentication-payloads)
-2. [Dashboard & Analytics Payloads](#dashboard--analytics-payloads)
-3. [Scan Management Payloads](#scan-management-payloads)
-4. [Patient Management Payloads](#patient-management-payloads)
-5. [User Profile Payloads](#user-profile-payloads)
-6. [Admin Payloads](#admin-payloads)
-7. [Notification Payloads](#notification-payloads)
-8. [Error Response Payloads](#error-response-payloads)
-9. [Enum Values Reference](#enum-values-reference)
+1. [Authentication Endpoints (`/auth`)](#1-authentication-endpoints-auth)
+2. [User Profile Endpoints (`/users`)](#2-user-profile-endpoints-users)
+3. [Patient Management Endpoints (`/patients`)](#3-patient-management-endpoints-patients)
+4. [Scan Management Endpoints (`/scans`)](#4-scan-management-endpoints-scans)
+5. [Dashboard & Analytics Endpoints (`/analytics` & `/dashboard`)](#5-dashboard--analytics-endpoints-analytics--dashboard)
+6. [Support Messages Endpoints (`/messages`)](#6-support-messages-endpoints-messages)
+7. [Notification Endpoints (`/notifications`)](#7-notification-endpoints-notifications)
+8. [AI Engine Endpoints (`/ai`)](#8-ai-engine-endpoints-ai)
+9. [Error Payloads](#9-error-payloads)
 
 ---
 
-# AUTHENTICATION PAYLOADS
-
-## 1. Register Request
-
-**Endpoint:** `POST /auth/register`  
-**Status Code:** 201 Created  
-**Auth Required:** ❌ No
-
-### Request Payload
-
-```json
-{
-  "email": "doctor@example.com",
-  "password": "SecurePass123!",
-  "name": "Dr. John Doe",
-  "role": "CLINICIAN",
-  "phone": "+1234567890",
-  "specialization": "Radiology",
-  "yearsOfExperience": 10,
-  "licenseNumber": "LIC123456"
-}
-```
-
-**Field Validation Rules:**
-```typescript
-{
-  email: string (required, valid email format),
-  password: string (required, min 8 characters, strong password),
-  name: string (required, 1-100 characters),
-  role: enum (required, "CLINICIAN" | "PATIENT" | "ADMIN"),
-  phone: string (optional, valid phone format),
-  
-  // CLINICIAN only:
-  specialization: string (optional, max 100 chars),
-  yearsOfExperience: number (optional, 0-80),
-  licenseNumber: string (optional, max 50 chars),
-  
-  // PATIENT only:
-  dateOfBirth: string (optional, ISO date format "YYYY-MM-DD"),
-  gender: enum (optional, "MALE" | "FEMALE" | "OTHER"),
-  bloodType: string (optional, "A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"),
-  medicalHistory: string (optional, text max 1000 chars)
-}
-```
-
-### Response Payload
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "email": "doctor@example.com",
-  "name": "Dr. John Doe",
-  "role": "CLINICIAN",
-  "specialization": "Radiology",
-  "phone": "+1234567890",
-  "avatarUrl": null,
-  "isActive": true,
-  "isVerified": false,
-  "createdAt": "2026-04-20T10:30:00.000Z",
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
----
-
-## 2. Login Request
-
-**Endpoint:** `POST /auth/login`  
-**Status Code:** 200 OK  
-**Auth Required:** ❌ No
-
-### Request Payload
-
-```json
-{
-  "email": "doctor@example.com",
-  "password": "SecurePass123!"
-}
-```
-
-**Field Validation:**
-```typescript
-{
-  email: string (required, valid email),
-  password: string (required, non-empty)
-}
-```
-
-### Response Payload
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "email": "doctor@example.com",
-  "name": "Dr. John Doe",
-  "role": "CLINICIAN",
-  "specialization": "Radiology",
-  "phone": "+1234567890",
-  "avatarUrl": null,
-  "isActive": true,
-  "isVerified": true,
-  "createdAt": "2026-04-20T10:30:00.000Z",
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
----
-
-## 3. Verify OTP Request
-
-**Endpoint:** `POST /auth/verify-otp`  
-**Status Code:** 200 OK  
-**Auth Required:** ❌ No
-
-### Request Payload
-
-```json
-{
-  "email": "doctor@example.com",
-  "otp": "123456"
-}
-```
-
-**Field Validation:**
-```typescript
-{
-  email: string (required, valid email),
-  otp: string (required, exactly 6 digits)
-}
-```
-
-### Response Payload
-
-```json
-{
-  "message": "Email verified successfully",
-  "user": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "email": "doctor@example.com",
-    "name": "Dr. John Doe",
-    "role": "CLINICIAN",
-    "isVerified": true,
-    "isActive": true
-  },
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
----
-
-## 4. Resend OTP Request
-
-**Endpoint:** `POST /auth/resend-otp`  
-**Status Code:** 200 OK  
-**Auth Required:** ❌ No
-
-### Request Payload
-
-```json
-{
-  "email": "doctor@example.com"
-}
-```
-
-**Field Validation:**
-```typescript
-{
-  email: string (required, valid email format)
-}
-```
-
-### Response Payload
-
-```json
-{
-  "message": "OTP sent to your email address"
-}
-```
-
----
-
-## 5. Forgot Password Request
-
-**Endpoint:** `POST /auth/forgot-password`  
-**Status Code:** 200 OK  
-**Auth Required:** ❌ No
-
-### Request Payload
-
-```json
-{
-  "email": "doctor@example.com"
-}
-```
-
-**Field Validation:**
-```typescript
-{
-  email: string (required, valid email)
-}
-```
-
-### Response Payload
-
-```json
-{
-  "message": "If an account exists with this email, you will receive password reset instructions."
-}
-```
-
-**Security Note:** Generic message for both existing and non-existing emails
-
----
-
-## 6. Change Password Request
-
-**Endpoint:** `POST /auth/change-password`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)  
-**Headers:** `Authorization: Bearer {token}`
-
-### Request Payload
-
-```json
-{
-  "currentPassword": "OldPass123!",
-  "newPassword": "NewPass456!",
-  "confirmPassword": "NewPass456!"
-}
-```
-
-**Field Validation:**
-```typescript
-{
-  currentPassword: string (required, non-empty),
-  newPassword: string (required, min 8 chars, strong),
-  confirmPassword: string (required, must match newPassword)
-}
-```
-
-### Response Payload
-
-```json
-{
-  "message": "Password changed successfully"
-}
-```
-
----
-
-## 7. Logout Request
-
-**Endpoint:** `POST /auth/logout`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)  
-**Headers:** `Authorization: Bearer {token}`
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "message": "Logged out successfully"
-}
-```
-
----
-
-## 8. Get Current User Profile
-
-**Endpoint:** `GET /auth/me`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)  
-**Headers:** `Authorization: Bearer {token}`
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "email": "doctor@example.com",
-  "name": "Dr. John Doe",
-  "role": "CLINICIAN",
-  "specialization": "Radiology",
-  "phone": "+1234567890",
-  "avatarUrl": null,
-  "isActive": true,
-  "isVerified": true,
-  "createdAt": "2026-04-20T10:30:00.000Z",
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
----
-
-# DASHBOARD & ANALYTICS PAYLOADS
-
-## 1. Get Dashboard Statistics
-
-**Endpoint:** `GET /analytics/stats`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)  
-**Headers:** `Authorization: Bearer {token}`
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "totalScans": 1250,
-  "completedScans": 1200,
-  "processingScans": 3,
-  "failedScans": 47,
-  "pneumoniaCases": 350,
-  "normalCases": 850,
-  "averageConfidence": 0.8754,
-  "weekGrowthPercentage": 12.5,
-  "previousWeekScans": 980,
-  "recentScans": [
-    {
-      "id": "scan-001",
-      "imageUrl": "https://cloudinary.../xray.jpg",
-      "status": "COMPLETED",
-      "result": "PNEUMONIA",
-      "confidence": 0.95,
-      "createdAt": "2026-04-20T14:30:00Z",
-      "patient": {
-        "id": "patient-001",
-        "name": "John Smith",
-        "idNumber": "P001"
-      }
-    }
-  ]
-}
-```
-
----
-
-## 2. Get Scan Results Breakdown
-
-**Endpoint:** `GET /analytics/scans/results`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "resultBreakdown": {
-    "pneumonia": 350,
-    "normal": 850,
-    "concerns": 50,
-    "pneumoniaPercentage": 29.17,
-    "normalPercentage": 70.83,
-    "concernsPercentage": 4.17
-  },
-  "confidenceDistribution": {
-    "excellent": 900,
-    "good": 280,
-    "fair": 70
-  },
-  "timelineData": [
-    {
-      "date": "2026-04-14",
-      "scans": 120,
-      "pneumonia": 35,
-      "normal": 75,
-      "concerns": 10,
-      "averageConfidence": 0.862
-    }
-  ],
-  "totalScans": 1250,
-  "averageConfidence": 0.8754
-}
-```
-
----
-
-## 3. Get Patient Analytics
-
-**Endpoint:** `GET /analytics/patients`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "totalPatients": 450,
-  "newPatientsThisMonth": 45,
-  "patientsWithPneumonia": 120,
-  "averageScansPerPatient": 2.78,
-  "topPatients": [
-    {
-      "id": "patient-001",
-      "idNumber": "P001",
-      "name": "John Doe",
-      "age": 45,
-      "gender": "MALE",
-      "scanCount": 12
-    }
-  ]
-}
-```
-
----
-
-## 4. Get Dashboard Overview
-
-**Endpoint:** `GET /dashboard/overview`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "summary": {
-    "totalScans": 1250,
-    "completedScans": 1200,
-    "pneumoniaCases": 350,
-    "normalCases": 850,
-    "averageConfidence": 0.8754
-  },
-  "recentScans": [
-    {
-      "id": "scan-001",
-      "patientName": "John Smith",
-      "result": "PNEUMONIA",
-      "confidence": 0.95,
-      "createdAt": "2026-04-20T14:30:00Z"
-    }
-  ],
-  "systemStatus": {
-    "aiModel": "Operational",
-    "database": "Connected",
-    "storage": "78%"
-  }
-}
-```
-
----
-
-## 5. Get System Status
-
-**Endpoint:** `GET /dashboard/system-status`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "aiModel": "Operational",
-  "database": "Connected",
-  "storage": "78% Used"
-}
-```
-
----
-
-# SCAN MANAGEMENT PAYLOADS
-
-## 1. Upload Scan
-
-**Endpoint:** `POST /scans/upload`  
-**Status Code:** 201 Created  
-**Auth Required:** ✅ Yes (JwtAuthGuard)  
-**Headers:** 
-```
-Authorization: Bearer {token}
-Content-Type: multipart/form-data
-```
-
-### Request Payload (FormData)
-
-```
-image: File (JPG/PNG, max 10MB)
-patientId: string (UUID)
-clinicianNotes: string (optional, max 1000 chars)
-```
-
-### Response Payload
-
-```json
-{
-  "message": "Scan uploaded successfully",
-  "scan": {
-    "id": "scan-001",
-    "imageUrl": "https://cloudinary.../xray.jpg",
-    "patientId": "patient-001",
-    "clinicianId": "user-001",
-    "status": "PENDING",
-    "result": null,
-    "confidence": null,
-    "createdAt": "2026-04-20T15:00:00.000Z"
-  }
-}
-```
-
----
-
-## 2. Process Scan (AI Analysis)
-
-**Endpoint:** `POST /scans/{scanId}/process`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{
-  "confidence": 0.95,
-  "result": "PNEUMONIA",
-  "heatmapUrl": "https://cloudinary.../heatmap.jpg"
-}
-```
-
-**Field Validation:**
-```typescript
-{
-  confidence: number (0-1, optional),
-  result: enum (optional, "PNEUMONIA" | "NORMAL" | "CONCERNS"),
-  heatmapUrl: string (optional, valid URL)
-}
-```
-
-### Response Payload
-
-```json
-{
-  "message": "Scan processed successfully",
-  "scan": {
-    "id": "scan-001",
-    "imageUrl": "https://cloudinary.../xray.jpg",
-    "heatmapUrl": "https://cloudinary.../heatmap.jpg",
-    "status": "COMPLETED",
-    "result": "PNEUMONIA",
-    "confidence": 0.95,
-    "patientId": "patient-001",
-    "clinicianId": "user-001",
-    "createdAt": "2026-04-20T15:00:00.000Z",
-    "analyzedAt": "2026-04-20T15:05:00.000Z"
-  }
-}
-```
-
----
-
-## 3. Get Scan Details
-
-**Endpoint:** `GET /scans/{scanId}`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "id": "scan-001",
-  "imageUrl": "https://cloudinary.../xray.jpg",
-  "heatmapUrl": "https://cloudinary.../heatmap.jpg",
-  "status": "COMPLETED",
-  "result": "PNEUMONIA",
-  "confidence": 0.95,
-  "modelVersion": "1.0.0",
-  "clinicianNotes": "Follow-up recommended",
-  "patientNotes": null,
-  "analyzedAt": "2026-04-20T15:05:00.000Z",
-  "patientViewedAt": null,
-  "isSharedWithPatient": true,
-  "createdAt": "2026-04-20T15:00:00.000Z",
-  "patient": {
-    "id": "patient-001",
-    "idNumber": "P001",
-    "name": "John Smith",
-    "age": 45,
-    "gender": "MALE"
-  },
-  "clinician": {
-    "id": "user-001",
-    "name": "Dr. John Doe",
-    "specialization": "Radiology"
-  }
-}
-```
-
----
-
-## 4. Get Scan History
-
-**Endpoint:** `GET /scans`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "count": 25,
-  "scans": [
-    {
-      "id": "scan-001",
-      "imageUrl": "https://cloudinary.../xray.jpg",
-      "status": "COMPLETED",
-      "result": "PNEUMONIA",
-      "confidence": 0.95,
-      "createdAt": "2026-04-20T15:00:00.000Z",
-      "patient": {
-        "id": "patient-001",
-        "name": "John Smith",
-        "idNumber": "P001"
-      }
-    }
-  ]
-}
-```
-
----
-
-## 5. Get Patient Scans
-
-**Endpoint:** `GET /scans/patient/{patientId}`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "count": 5,
-  "patientId": "patient-001",
-  "scans": [
-    {
-      "id": "scan-001",
-      "imageUrl": "https://cloudinary.../xray.jpg",
-      "status": "COMPLETED",
-      "result": "PNEUMONIA",
-      "confidence": 0.95,
-      "createdAt": "2026-04-20T15:00:00.000Z"
-    }
-  ]
-}
-```
-
----
-
-## 6. Get My Scans (Patient)
-
-**Endpoint:** `GET /scans/patient/my-scans/list`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)  
-**Role Required:** PATIENT
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "count": 5,
-  "scans": [
-    {
-      "id": "scan-001",
-      "result": "PNEUMONIA",
-      "confidence": 0.95,
-      "createdAt": "2026-04-20T15:00:00.000Z"
-    }
-  ]
-}
-```
-
----
-
-## 7. View Scan (Patient Safe View)
-
-**Endpoint:** `GET /scans/patient/{scanId}/view`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)  
-**Role Required:** PATIENT
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "id": "scan-001",
-  "result": "PNEUMONIA",
-  "confidence": 0.95,
-  "createdAt": "2026-04-20T15:00:00.000Z",
-  "patientNotes": "Symptoms improving"
-}
-```
-
----
-
-## 8. Add Patient Notes
-
-**Endpoint:** `PATCH /scans/patient/{scanId}/notes`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)  
-**Role Required:** PATIENT
-
-### Request Payload
-
-```json
-{
-  "patientNotes": "My symptoms have improved significantly"
-}
-```
-
-### Response Payload
-
-```json
-{
-  "message": "Notes updated successfully",
-  "scan": {
-    "id": "scan-001",
-    "patientNotes": "My symptoms have improved significantly",
-    "updatedAt": "2026-04-20T16:00:00.000Z"
-  }
-}
-```
-
----
-
-# PATIENT MANAGEMENT PAYLOADS
-
-## 1. Create Patient
-
-**Endpoint:** `POST /patients`  
-**Status Code:** 201 Created  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{
-  "idNumber": "P12345",
-  "name": "Jane Smith",
-  "age": 52,
-  "gender": "FEMALE"
-}
-```
-
-**Field Validation:**
-```typescript
-{
-  idNumber: string (required, unique, 1-50 chars),
-  name: string (required, 1-100 chars),
-  age: number (required, 0-150),
-  gender: enum (required, "MALE" | "FEMALE" | "OTHER")
-}
-```
-
-### Response Payload
-
-```json
-{
-  "id": "patient-002",
-  "idNumber": "P12345",
-  "name": "Jane Smith",
-  "age": 52,
-  "gender": "FEMALE",
-  "createdAt": "2026-04-20T10:30:00.000Z"
-}
-```
-
----
-
-## 2. Get All Patients
-
-**Endpoint:** `GET /patients`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{}
-```
-
-### Query Parameters (Optional)
-
-```
-?search=name&skip=0&take=20&includeScans=true
-```
-
-### Response Payload
-
-```json
-{
-  "count": 150,
-  "patients": [
-    {
-      "id": "patient-001",
-      "idNumber": "P001",
-      "name": "John Smith",
-      "age": 45,
-      "gender": "MALE",
-      "createdAt": "2026-04-01T00:00:00.000Z",
-      "scans": [
-        {
-          "id": "scan-001",
-          "result": "PNEUMONIA",
-          "confidence": 0.95
-        }
-      ]
-    }
-  ]
-}
-```
-
----
-
-## 3. Get Patient Details
-
-**Endpoint:** `GET /patients/{patientId}`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{}
-```
-
-### Query Parameters (Optional)
-
-```
-?includeScans=true
-```
-
-### Response Payload
-
-```json
-{
-  "id": "patient-001",
-  "idNumber": "P001",
-  "name": "John Smith",
-  "age": 45,
-  "gender": "MALE",
-  "createdAt": "2026-04-01T00:00:00.000Z",
-  "scans": [
-    {
-      "id": "scan-001",
-      "result": "PNEUMONIA",
-      "confidence": 0.95,
-      "createdAt": "2026-04-20T15:00:00.000Z"
-    }
-  ]
-}
-```
-
----
-
-## 4. Update Patient
-
-**Endpoint:** `PUT /patients/{patientId}`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{
-  "idNumber": "P001",
-  "name": "John Smith Updated",
-  "age": 46,
-  "gender": "MALE"
-}
-```
-
-### Response Payload
-
-```json
-{
-  "id": "patient-001",
-  "idNumber": "P001",
-  "name": "John Smith Updated",
-  "age": 46,
-  "gender": "MALE",
-  "updatedAt": "2026-04-20T16:00:00.000Z"
-}
-```
-
----
-
-## 5. Delete Patient
-
-**Endpoint:** `DELETE /patients/{patientId}`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "message": "Patient deleted successfully"
-}
-```
-
----
-
-# USER PROFILE PAYLOADS
-
-## 1. Get Current User
-
-**Endpoint:** `GET /users/me`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "id": "user-001",
-  "email": "doctor@example.com",
-  "name": "Dr. John Doe",
-  "role": "CLINICIAN",
-  "specialization": "Radiology",
-  "phone": "+1234567890",
-  "avatarUrl": null,
-  "isActive": true,
-  "isVerified": true,
-  "createdAt": "2026-04-01T00:00:00.000Z"
-}
-```
-
----
-
-## 2. Update Profile
-
-**Endpoint:** `PATCH /users/profile`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{
-  "name": "Dr. John Doe Updated",
-  "phone": "+1987654321",
-  "specialization": "Pulmonology",
-  "avatarUrl": "https://..."
-}
-```
-
-**Field Validation:**
-```typescript
-{
-  name: string (optional, 1-100 chars),
-  phone: string (optional, valid phone format),
-  specialization: string (optional, 1-100 chars),
-  avatarUrl: string (optional, valid URL)
-}
-```
-
-### Response Payload
-
-```json
-{
-  "id": "user-001",
-  "email": "doctor@example.com",
-  "name": "Dr. John Doe Updated",
-  "role": "CLINICIAN",
-  "phone": "+1987654321",
-  "specialization": "Pulmonology",
-  "avatarUrl": "https://...",
-  "updatedAt": "2026-04-20T16:00:00.000Z"
-}
-```
-
----
-
-## 3. Get Patient Profile
-
-**Endpoint:** `GET /users/patient-profile`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)  
-**Role Required:** PATIENT
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "id": "patient-profile-001",
-  "userId": "user-001",
-  "email": "patient@example.com",
-  "name": "Jane Patient",
-  "dateOfBirth": "1980-05-15",
-  "gender": "FEMALE",
-  "bloodType": "O+",
-  "medicalHistory": "Asthma, Allergies",
-  "createdAt": "2026-04-01T00:00:00.000Z"
-}
-```
-
----
-
-## 4. Update Patient Profile
-
-**Endpoint:** `PUT /users/patient-profile`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)  
-**Role Required:** PATIENT
-
-### Request Payload
-
-```json
-{
-  "dateOfBirth": "1980-05-15",
-  "gender": "FEMALE",
-  "bloodType": "AB+",
-  "medicalHistory": "Asthma, Allergies, Updated"
-}
-```
-
-### Response Payload
-
-```json
-{
-  "id": "patient-profile-001",
-  "userId": "user-001",
-  "dateOfBirth": "1980-05-15",
-  "gender": "FEMALE",
-  "bloodType": "AB+",
-  "medicalHistory": "Asthma, Allergies, Updated",
-  "updatedAt": "2026-04-20T16:00:00.000Z"
-}
-```
-
----
-
-## 5. Get Recent Activity
-
-**Endpoint:** `GET /users/recent-activity`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{}
-```
-
-### Query Parameters (Optional)
-
-```
-?limit=20
-```
-
-### Response Payload
-
-```json
-[
+## 1. Authentication Endpoints (`/auth`)
+
+### 1.1 Register User
+* **Endpoint:** `POST /auth/register`
+* **Auth Required:** ❌ No
+* **Request Payload:**
+  ```json
   {
-    "id": "activity-001",
-    "type": "SCAN_UPLOADED",
-    "description": "Uploaded scan for patient John Smith",
-    "timestamp": "2026-04-20T15:00:00.000Z",
-    "metadata": {
-      "scanId": "scan-001",
-      "patientId": "patient-001"
-    }
-  }
-]
-```
-
----
-
-## 6. Download Personal Data
-
-**Endpoint:** `GET /users/download-data`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response
-
-File: `user-data-{userId}-{timestamp}.json`
-
-```json
-{
-  "user": { /* user object */ },
-  "scans": [ /* all user scans */ ],
-  "patients": [ /* all patients */ ],
-  "loginHistory": [ /* login history */ ]
-}
-```
-
----
-
-## 7. Delete Account
-
-**Endpoint:** `POST /users/delete-account`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{
-  "password": "UserPassword123!"
-}
-```
-
-### Response Payload
-
-```json
-{
-  "message": "Account permanently deleted"
-}
-```
-
----
-
-# ADMIN PAYLOADS
-
-## 1. Get All Users
-
-**Endpoint:** `GET /admin/users`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)  
-**Role Required:** ADMIN
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-[
-  {
-    "id": "user-001",
     "email": "doctor@example.com",
-    "name": "Dr. John Smith",
+    "password": "SecurePass123!",
+    "name": "Dr. Jane Doe",
     "role": "CLINICIAN",
     "phone": "+1234567890",
-    "specialization": "Radiology",
+    "specialization": "Pulmonology"
+  }
+  ```
+  *(Note: `role` can be `"CLINICIAN"`, `"PATIENT"`, or `"ADMIN"`)*
+* **Response Payload (201 Created):**
+  ```json
+  {
+    "id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+    "email": "doctor@example.com",
+    "name": "Dr. Jane Doe",
+    "role": "CLINICIAN",
+    "specialization": "Pulmonology",
+    "phone": "+1234567890",
+    "avatarUrl": null,
+    "isActive": true,
+    "isVerified": false,
+    "createdAt": "2026-06-22T18:00:00.000Z",
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+  ```
+
+### 1.2 Login User
+* **Endpoint:** `POST /auth/login`
+* **Auth Required:** ❌ No
+* **Request Payload:**
+  ```json
+  {
+    "email": "doctor@example.com",
+    "password": "SecurePass123!"
+  }
+  ```
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+    "email": "doctor@example.com",
+    "name": "Dr. Jane Doe",
+    "role": "CLINICIAN",
+    "specialization": "Pulmonology",
+    "phone": "+1234567890",
+    "avatarUrl": null,
     "isActive": true,
     "isVerified": true,
-    "createdAt": "2026-03-01T00:00:00.000Z"
+    "createdAt": "2026-06-22T18:00:00.000Z",
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
   }
-]
-```
+  ```
 
----
-
-## 2. Get User Details
-
-**Endpoint:** `GET /admin/users/{userId}`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)  
-**Role Required:** ADMIN
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "id": "user-001",
-  "email": "doctor@example.com",
-  "name": "Dr. John Smith",
-  "role": "CLINICIAN",
-  "phone": "+1234567890",
-  "specialization": "Radiology",
-  "isActive": true,
-  "isVerified": true,
-  "createdAt": "2026-03-01T00:00:00.000Z",
-  "scans": {
-    "total": 45,
-    "completed": 43,
-    "processing": 2
+### 1.3 Get Current User Profile
+* **Endpoint:** `GET /auth/me`
+* **Auth Required:** ✅ Yes (`Authorization: Bearer <JWT>`)
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+    "email": "doctor@example.com",
+    "name": "Dr. Jane Doe",
+    "role": "CLINICIAN",
+    "specialization": "Pulmonology",
+    "phone": "+1234567890",
+    "avatarUrl": null,
+    "isActive": true,
+    "isVerified": true,
+    "createdAt": "2026-06-22T18:00:00.000Z"
   }
-}
-```
+  ```
+
+### 1.4 Verify Email OTP
+* **Endpoint:** `POST /auth/verify-otp`
+* **Auth Required:** ❌ No
+* **Request Payload:**
+  ```json
+  {
+    "email": "doctor@example.com",
+    "otp": "123456"
+  }
+  ```
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "message": "Email verified successfully",
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+  ```
+
+### 1.5 Resend OTP
+* **Endpoint:** `POST /auth/resend-otp`
+* **Auth Required:** ❌ No
+* **Request Payload:**
+  ```json
+  {
+    "email": "doctor@example.com"
+  }
+  ```
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "message": "OTP resent successfully"
+  }
+  ```
+
+### 1.6 Request Password Reset Link
+* **Endpoint:** `POST /auth/forgot-password`
+* **Auth Required:** ❌ No
+* **Request Payload:**
+  ```json
+  {
+    "email": "doctor@example.com"
+  }
+  ```
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "message": "Password reset email sent if account exists"
+  }
+  ```
+
+### 1.7 Change Password
+* **Endpoint:** `POST /auth/change-password`
+* **Auth Required:** ✅ Yes (`Authorization: Bearer <JWT>`)
+* **Request Payload:**
+  ```json
+  {
+    "currentPassword": "SecurePass123!",
+    "newPassword": "NewSecurePass456!",
+    "confirmPassword": "NewSecurePass456!"
+  }
+  ```
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "message": "Password changed successfully"
+  }
+  ```
+
+### 1.8 Logout
+* **Endpoint:** `POST /auth/logout`
+* **Auth Required:** ✅ Yes (`Authorization: Bearer <JWT>`)
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "message": "User logged out successfully"
+  }
+  ```
 
 ---
 
-## 3. Update User Status
+## 2. User Profile Endpoints (`/users`)
 
-**Endpoint:** `PATCH /admin/users/{userId}/status`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)  
-**Role Required:** ADMIN
+### 2.1 Update User Profile details
+* **Endpoint:** `PATCH /users/profile`
+* **Auth Required:** ✅ Yes (`Authorization: Bearer <JWT>`)
+* **Request Payload:**
+  ```json
+  {
+    "name": "Dr. Jane Doe Updated",
+    "phone": "+19876543210",
+    "specialization": "Radiology",
+    "avatarUrl": "https://example.com/avatar.jpg"
+  }
+  ```
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+    "email": "doctor@example.com",
+    "name": "Dr. Jane Doe Updated",
+    "role": "CLINICIAN",
+    "specialization": "Radiology",
+    "phone": "+19876543210",
+    "avatarUrl": "https://example.com/avatar.jpg",
+    "isActive": true,
+    "isVerified": true,
+    "createdAt": "2026-06-22T18:00:00.000Z"
+  }
+  ```
 
-### Request Payload
+### 2.2 Download Personal Data (GDPR)
+* **Endpoint:** `GET /users/download-data`
+* **Auth Required:** ✅ Yes (`Authorization: Bearer <JWT>`)
+* **Response:** Returns file download as JSON containing all scan histories, user profiles, notifications, and login history structures.
 
-```json
-{
-  "isActive": false
-}
-```
+### 2.3 Get Patient Specific Profile
+* **Endpoint:** `GET /users/patient-profile`
+* **Auth Required:** ✅ Yes (Requires `PATIENT` role)
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "id": "profile-uuid-12345",
+    "userId": "user-uuid-12345",
+    "dateOfBirth": "1990-05-15T00:00:00.000Z",
+    "gender": "FEMALE",
+    "bloodType": "O+",
+    "medicalHistory": "No chronic issues",
+    "emergencyContactName": "John Doe",
+    "emergencyContactPhone": "+1234567890",
+    "emergencyContactRelationship": "Spouse"
+  }
+  ```
 
-### Response Payload
+### 2.4 Update Patient Specific Profile
+* **Endpoint:** `PUT /users/patient-profile`
+* **Auth Required:** ✅ Yes (Requires `PATIENT` or `ADMIN` role)
+* **Request Payload:**
+  ```json
+  {
+    "name": "Jane Smith",
+    "phone": "+1987654321",
+    "dateOfBirth": "1990-05-15",
+    "gender": "FEMALE",
+    "bloodType": "O+",
+    "medicalHistory": "Mild asthma",
+    "emergencyContact": {
+      "name": "John Doe",
+      "phone": "+1234567890",
+      "relationship": "Spouse"
+    }
+  }
+  ```
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "userId": "user-uuid-12345",
+    "email": "jane@example.com",
+    "name": "Jane Smith",
+    "phone": "+1987654321",
+    "dateOfBirth": "1990-05-15T00:00:00.000Z",
+    "age": 36,
+    "gender": "FEMALE",
+    "bloodType": "O+",
+    "medicalHistory": "Mild asthma",
+    "emergencyContact": {
+      "name": "John Doe",
+      "phone": "+1234567890",
+      "relationship": "Spouse"
+    },
+    "updatedAt": "2026-06-22T18:10:00.000Z"
+  }
+  ```
 
-```json
-{
-  "id": "user-001",
-  "email": "doctor@example.com",
-  "name": "Dr. John Smith",
-  "isActive": false,
-  "message": "User status updated successfully"
-}
-```
+### 2.5 Get User Activity History [NEW]
+* **Endpoint:** `GET /users/activity`
+* **Auth Required:** ✅ Yes (`Authorization: Bearer <JWT>`)
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "recentScans": [
+      {
+        "id": "scan-uuid-123",
+        "imageUrl": "https://example.com/scan.jpg",
+        "heatmapUrl": "https://example.com/heatmap.jpg",
+        "result": "PNEUMONIA",
+        "confidence": 0.92,
+        "status": "COMPLETED",
+        "createdAt": "2026-06-22T18:00:00.000Z",
+        "updatedAt": "2026-06-22T18:01:00.000Z",
+        "patientName": "Jane Smith"
+      }
+    ],
+    "recentNotifications": [
+      {
+        "id": "notif-uuid-456",
+        "title": "Diagnosis Uploaded",
+        "message": "Pneumonia Suspected (92.0% confidence) for patient Jane Smith",
+        "type": "SCAN",
+        "createdAt": "2026-06-22T18:01:00.000Z",
+        "isRead": false
+      }
+    ],
+    "loginHistory": [
+      {
+        "id": "login-uuid-789",
+        "loginAt": "2026-06-22T17:50:00.000Z",
+        "logoutAt": null,
+        "ipAddress": "192.168.1.1",
+        "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)..."
+      }
+    ],
+    "profileUpdatedAt": "2026-06-22T18:10:00.000Z"
+  }
+  ```
 
----
-
-## 4. Delete User
-
-**Endpoint:** `DELETE /admin/users/{userId}`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)  
-**Role Required:** ADMIN
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "message": "User deleted successfully"
-}
-```
-
----
-
-# NOTIFICATION PAYLOADS
-
-## 1. Get All Notifications
-
-**Endpoint:** `GET /notifications`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "notifications": [
+### 2.6 Get Login History [NEW]
+* **Endpoint:** `GET /users/activity/login`
+* **Auth Required:** ✅ Yes (`Authorization: Bearer <JWT>`)
+* **Response Payload (200 OK):**
+  ```json
+  [
     {
-      "id": "notif-001",
-      "title": "Scan Complete",
-      "message": "Your scan has been analyzed",
-      "type": "SCAN",
-      "read": false,
-      "createdAt": "2026-04-20T14:30:00Z"
+      "id": "login-uuid-789",
+      "loginAt": "2026-06-22T17:50:00.000Z",
+      "logoutAt": null,
+      "ipAddress": "192.168.1.1",
+      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)..."
     }
   ]
-}
-```
+  ```
 
 ---
 
-## 2. Get Single Notification
+## 3. Patient Management Endpoints (`/patients`)
 
-**Endpoint:** `GET /notifications/{id}`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
+### 3.1 Create Patient Clinical Record
+* **Endpoint:** `POST /patients`
+* **Auth Required:** ✅ Yes (`Authorization: Bearer <JWT>`)
+* **Request Payload:**
+  ```json
+  {
+    "idNumber": "PAT-9988-77",
+    "name": "Jane Smith",
+    "age": 36,
+    "gender": "FEMALE"
+  }
+  ```
+* **Response Payload (201 Created):**
+  ```json
+  {
+    "id": "patient-uuid-12345",
+    "idNumber": "PAT-9988-77",
+    "name": "Jane Smith",
+    "age": 36,
+    "gender": "FEMALE",
+    "createdAt": "2026-06-22T18:00:00.000Z",
+    "updatedAt": "2026-06-22T18:00:00.000Z"
+  }
+  ```
 
-### Request Payload
+### 3.2 Get Patient by ID
+* **Endpoint:** `GET /patients/:id`
+* **Query Parameters:** `?includeScans=true` (optional)
+* **Auth Required:** ✅ Yes (`Authorization: Bearer <JWT>`)
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "id": "patient-uuid-12345",
+    "idNumber": "PAT-9988-77",
+    "name": "Jane Smith",
+    "age": 36,
+    "gender": "FEMALE",
+    "createdAt": "2026-06-22T18:00:00.000Z",
+    "updatedAt": "2026-06-22T18:00:00.000Z",
+    "scans": [
+      {
+        "id": "scan-uuid-123",
+        "imageUrl": "https://example.com/scan.jpg",
+        "status": "COMPLETED",
+        "result": "PNEUMONIA",
+        "confidence": 0.92,
+        "createdAt": "2026-06-22T18:00:00.000Z"
+      }
+    ]
+  }
+  ```
 
-```json
-{}
-```
+### 3.3 Update Patient details
+* **Endpoint:** `PATCH /patients/:id`
+* **Auth Required:** ✅ Yes (`Authorization: Bearer <JWT>`)
+* **Request Payload:**
+  ```json
+  {
+    "name": "Jane Doe Smith",
+    "age": 37
+  }
+  ```
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "id": "patient-uuid-12345",
+    "idNumber": "PAT-9988-77",
+    "name": "Jane Doe Smith",
+    "age": 37,
+    "gender": "FEMALE",
+    "createdAt": "2026-06-22T18:00:00.000Z",
+    "updatedAt": "2026-06-22T18:15:00.000Z"
+  }
+  ```
 
-### Response Payload
-
-```json
-{
-  "id": "notif-001",
-  "title": "Scan Complete",
-  "message": "Your scan has been analyzed",
-  "type": "SCAN",
-  "read": false,
-  "createdAt": "2026-04-20T14:30:00Z"
-}
-```
-
----
-
-## 3. Mark Notification as Read
-
-**Endpoint:** `PATCH /notifications/{id}`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{
-  "read": true
-}
-```
-
-### Response Payload
-
-```json
-{
-  "id": "notif-001",
-  "title": "Scan Complete",
-  "message": "Your scan has been analyzed",
-  "type": "SCAN",
-  "read": true,
-  "updatedAt": "2026-04-20T16:00:00Z"
-}
-```
-
----
-
-## 4. Mark All Notifications as Read
-
-**Endpoint:** `POST /notifications/mark-all-read`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "message": "All notifications marked as read"
-}
-```
-
----
-
-## 5. Delete Notification
-
-**Endpoint:** `DELETE /notifications/{id}`  
-**Status Code:** 200 OK  
-**Auth Required:** ✅ Yes (JwtAuthGuard)
-
-### Request Payload
-
-```json
-{}
-```
-
-### Response Payload
-
-```json
-{
-  "message": "Notification deleted successfully"
-}
-```
+### 3.4 Link Patient to User (Registered Account)
+* **Endpoint:** `PATCH /patients/:id/link-user`
+* **Auth Required:** ✅ Yes (Requires `ADMIN` role)
+* **Request Payload:**
+  ```json
+  {
+    "userId": "user-uuid-12345"
+  }
+  ```
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "id": "patient-uuid-12345",
+    "idNumber": "PAT-9988-77",
+    "name": "Jane Doe Smith",
+    "userId": "user-uuid-12345"
+  }
+  ```
 
 ---
 
-# ERROR RESPONSE PAYLOADS
+## 4. Scan Management Endpoints (`/scans`)
 
-## Standard Error Response Format
+### 4.1 Upload Scan (X-Ray Image)
+* **Endpoint:** `POST /scans/upload`
+* **Headers:** `Content-Type: multipart/form-data`
+* **Auth Required:** ✅ Yes (`Authorization: Bearer <JWT>`)
+* **Request Form-Data:**
+  * `image`: File (JPG/JPEG/PNG binary data)
+  * `patientId`: "patient-uuid-12345" (string)
+* **Response Payload (201 Created):**
+  ```json
+  {
+    "message": "Scan uploaded successfully",
+    "scan": {
+      "id": "scan-uuid-123",
+      "imageUrl": "https://res.cloudinary.com/.../xray.png",
+      "patientId": "patient-uuid-12345",
+      "clinicianId": "doctor-uuid-12345",
+      "status": "PENDING",
+      "result": null,
+      "confidence": null,
+      "createdAt": "2026-06-22T18:00:00.000Z"
+    }
+  }
+  ```
 
-All error responses follow this structure:
+### 4.2 Process Scan (ML Pipeline mock/inference)
+* **Endpoint:** `POST /scans/:id/process`
+* **Auth Required:** ✅ Yes (`Authorization: Bearer <JWT>`)
+* **Request Payload:**
+  ```json
+  {
+    "result": "PNEUMONIA",
+    "confidence": 0.92,
+    "heatmapUrl": "https://res.cloudinary.com/.../heatmap.png"
+  }
+  ```
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "message": "Scan processed successfully",
+    "scan": {
+      "id": "scan-uuid-123",
+      "imageUrl": "https://res.cloudinary.com/.../xray.png",
+      "heatmapUrl": "https://res.cloudinary.com/.../heatmap.png",
+      "status": "COMPLETED",
+      "result": "PNEUMONIA",
+      "confidence": 0.92,
+      "patientId": "patient-uuid-12345",
+      "createdAt": "2026-06-22T18:00:00.000Z",
+      "analyzedAt": "2026-06-22T18:01:00.000Z"
+    }
+  }
+  ```
 
+### 4.3 General Scan Update (Notes & diagnosis corrections) [NEW]
+* **Endpoint:** `PATCH /scans/:id`
+* **Auth Required:** ✅ Yes (Requires `CLINICIAN` or `ADMIN` role)
+* **Request Payload:**
+  ```json
+  {
+    "notes": "Consolidation in lower right lobe. Follow-up recommended.",
+    "result": "PNEUMONIA"
+  }
+  ```
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "id": "scan-uuid-123",
+    "imageUrl": "https://res.cloudinary.com/.../xray.png",
+    "heatmapUrl": "https://res.cloudinary.com/.../heatmap.png",
+    "result": "PNEUMONIA",
+    "confidence": 0.92,
+    "status": "COMPLETED",
+    "createdAt": "2026-06-22T18:00:00.000Z",
+    "analyzedAt": "2026-06-22T18:01:00.000Z",
+    "clinicianNotes": "Consolidation in lower right lobe. Follow-up recommended.",
+    "patientNotes": null,
+    "doctorName": "Dr. Jane Doe"
+  }
+  ```
+
+### 4.4 Get My Scans (Patient list)
+* **Endpoint:** `GET /scans/patient/my-scans/list`
+* **Auth Required:** ✅ Yes (Requires `PATIENT` role)
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "count": 1,
+    "scans": [
+      {
+        "id": "scan-uuid-123",
+        "result": "PNEUMONIA",
+        "confidence": 0.92,
+        "createdAt": "2026-06-22T18:00:00.000Z"
+      }
+    ]
+  }
+  ```
+
+### 4.5 View Scan Patient safe details
+* **Endpoint:** `GET /scans/patient/:scanId/view`
+* **Auth Required:** ✅ Yes (Requires `PATIENT` role)
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "id": "scan-uuid-123",
+    "imageUrl": "https://res.cloudinary.com/.../xray.png",
+    "heatmapUrl": "https://res.cloudinary.com/.../heatmap.png",
+    "result": "PNEUMONIA",
+    "confidence": 0.92,
+    "confidencePercentage": "92.0%",
+    "status": "COMPLETED",
+    "createdAt": "2026-06-22T18:00:00.000Z",
+    "analyzedAt": "2026-06-22T18:01:00.000Z",
+    "doctorName": "Dr. Jane Doe",
+    "clinicianNotes": "Consolidation in lower right lobe. Follow-up recommended.",
+    "patientNotes": null,
+    "recommendations": [
+      "Consult with a healthcare provider for confirmation",
+      "Follow-up imaging may be needed",
+      "Monitor symptoms closely",
+      "Consider seeking specialist evaluation"
+    ],
+    "disclaimer": "This AI analysis is assistive only and should not be used as a substitute for professional medical advice."
+  }
+  ```
+
+---
+
+## 5. Dashboard & Analytics Endpoints (`/analytics` & `/dashboard`)
+
+### 5.1 Get Unified Dashboard Metrics [NEW]
+* **Endpoint:** `GET /analytics/dashboard`
+* **Auth Required:** ✅ Yes (`Authorization: Bearer <JWT>`)
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "totalScans": 15,
+    "totalPatients": 3,
+    "pneumoniaDetected": 5,
+    "normalScans": 10,
+    "accuracyRate": 100.0,
+    "averageConfidence": 0.8955,
+    "todayMetrics": {
+      "scans": 2,
+      "pneumonia": 1,
+      "normal": 1
+    },
+    "thisWeekMetrics": {
+      "scans": 7,
+      "pneumonia": 2,
+      "normal": 5
+    },
+    "thisMonthMetrics": {
+      "scans": 15,
+      "pneumonia": 5,
+      "normal": 10
+    },
+    "recentScans": [
+      {
+        "id": "scan-uuid-123",
+        "imageUrl": "https://res.cloudinary.com/.../xray.png",
+        "heatmapUrl": null,
+        "status": "COMPLETED",
+        "result": "PNEUMONIA",
+        "confidence": 0.92,
+        "createdAt": "2026-06-22T18:00:00.000Z",
+        "updatedAt": "2026-06-22T18:01:00.000Z",
+        "patientId": "patient-uuid-12345",
+        "patient": {
+          "id": "patient-uuid-12345",
+          "idNumber": "PAT-9988-77",
+          "name": "Jane Smith"
+        }
+      }
+    ],
+    "topPatients": [
+      {
+        "id": "patient-uuid-12345",
+        "name": "Jane Smith",
+        "scanCount": 5,
+        "pneumoniaDetected": 2
+      }
+    ]
+  }
+  ```
+
+### 5.2 Get Analytics stats
+* **Endpoint:** `GET /analytics/stats`
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "totalScans": 15,
+    "completedScans": 15,
+    "processingScans": 0,
+    "failedScans": 0,
+    "pneumoniaCases": 5,
+    "normalCases": 10,
+    "averageConfidence": 0.8955,
+    "recentScans": []
+  }
+  ```
+
+### 5.3 Get Scan Result Distribution
+* **Endpoint:** `GET /analytics/scans/results`
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "resultBreakdown": {
+      "pneumonia": 5,
+      "normal": 10,
+      "concerns": 0,
+      "pneumoniaPercentage": 33.33,
+      "normalPercentage": 66.67,
+      "concernsPercentage": 0.0
+    },
+    "confidenceDistribution": {
+      "excellent": 8,
+      "good": 5,
+      "fair": 2
+    },
+    "timelineData": [
+      {
+        "date": "2026-06-22",
+        "scans": 2,
+        "pneumonia": 1,
+        "normal": 1,
+        "concerns": 0,
+        "averageConfidence": 0.91
+      }
+    ],
+    "totalScans": 15,
+    "averageConfidence": 0.8955
+  }
+  ```
+
+---
+
+## 6. Support Messages Endpoints (`/messages`)
+
+### 6.1 Send Support Message
+* **Endpoint:** `POST /messages/send`
+* **Request Payload:**
+  ```json
+  {
+    "subject": "App crashes on start",
+    "message": "When opening the app on my Android tablet, it immediately closes."
+  }
+  ```
+* **Response Payload (201 Created):**
+  ```json
+  {
+    "message": "Contact message submitted successfully"
+  }
+  ```
+
+---
+
+## 7. Notification Endpoints (`/notifications`)
+
+### 7.1 Get User Notifications
+* **Endpoint:** `GET /notifications`
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "count": 1,
+    "unreadCount": 1,
+    "notifications": [
+      {
+        "id": "notif-uuid-456",
+        "title": "Diagnosis Uploaded",
+        "message": "Pneumonia Suspected for patient Jane Smith",
+        "type": "SCAN",
+        "isRead": false,
+        "createdAt": "2026-06-22T18:01:00.000Z"
+      }
+    ]
+  }
+  ```
+
+### 7.2 Mark All Notifications as Read
+* **Endpoint:** `POST /notifications/mark-all-read`
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "updatedCount": 1
+  }
+  ```
+
+---
+
+## 8. AI Engine Endpoints (`/ai`)
+
+### 8.1 ML Predict Pneumonia
+* **Endpoint:** `POST /ai/predict`
+* **Request Payload:**
+  ```json
+  {
+    "imageUrl": "https://res.cloudinary.com/.../xray.png"
+  }
+  ```
+* **Response Payload (200 OK):**
+  ```json
+  {
+    "result": "PNEUMONIA",
+    "confidence": 0.9224,
+    "rawPrediction": 0.9224
+  }
+  ```
+
+---
+
+## 9. Error Payloads
+
+All endpoints return unified, clear JSON structures for validation and runtime errors.
+
+### 9.1 Validation Error (400 Bad Request)
 ```json
 {
   "statusCode": 400,
-  "message": "Error description",
-  "error": "Error type"
-}
-```
-
----
-
-## 1. Validation Error (400)
-
-```json
-{
-  "statusCode": 400,
-  "message": "Email must be a valid email",
+  "message": [
+    "email must be an email",
+    "password must be longer than or equal to 8 characters"
+  ],
   "error": "Bad Request"
 }
 ```
 
----
-
-## 2. Unauthorized (401)
-
+### 9.2 Unauthorized Error (401 Unauthorized)
 ```json
 {
   "statusCode": 401,
-  "message": "Unauthorized - invalid or missing JWT token",
+  "message": "Unauthorized",
   "error": "Unauthorized"
 }
 ```
 
----
-
-## 3. Forbidden (403)
-
+### 9.3 Forbidden Access (403 Forbidden)
 ```json
 {
   "statusCode": 403,
-  "message": "You do not have permission to access this resource",
+  "message": "You do not have permission to view this resource",
   "error": "Forbidden"
 }
 ```
 
----
-
-## 4. Not Found (404)
-
+### 9.4 Resource Not Found (404 Not Found)
 ```json
 {
   "statusCode": 404,
-  "message": "Scan not found",
+  "message": "Scan with ID scan-123 not found",
   "error": "Not Found"
 }
 ```
-
----
-
-## 5. Conflict (409)
-
-```json
-{
-  "statusCode": 409,
-  "message": "Email already exists",
-  "error": "Conflict"
-}
-```
-
----
-
-## 6. Server Error (500)
-
-```json
-{
-  "statusCode": 500,
-  "message": "Internal server error",
-  "error": "Internal Server Error"
-}
-```
-
----
-
-# ENUM VALUES REFERENCE
-
-## 1. User Roles
-
-```
-ADMIN      - Full system access
-CLINICIAN  - Can upload scans, manage patients
-PATIENT    - Can view own scans and profile
-```
-
----
-
-## 2. Scan Results
-
-```
-PNEUMONIA  - Pneumonia detected
-NORMAL     - Normal scan
-CONCERNS   - Other concerns detected
-```
-
----
-
-## 3. Scan Status
-
-```
-PENDING    - Awaiting processing
-PROCESSING - AI model analyzing
-COMPLETED  - Analysis complete
-FAILED     - Processing failed
-```
-
----
-
-## 4. Notification Types
-
-```
-SCAN    - Scan-related notification
-SYSTEM  - System notification
-USER    - User action notification
-```
-
----
-
-## 5. Gender
-
-```
-MALE   - Male
-FEMALE - Female
-OTHER  - Other
-```
-
----
-
-## 6. Blood Types
-
-```
-A+  A-
-B+  B-
-O+  O-
-AB+ AB-
-```
-
----
-
-# SUMMARY TABLE
-
-| Category | Count | Status |
-|----------|-------|--------|
-| Authentication Endpoints | 8 | ✅ |
-| Analytics Endpoints | 3 | ✅ |
-| Dashboard Endpoints | 2 | ✅ |
-| Scan Endpoints | 8 | ✅ |
-| Patient Endpoints | 5 | ✅ |
-| User Endpoints | 7 | ✅ |
-| Admin Endpoints | 4 | ✅ |
-| Notification Endpoints | 5 | ✅ |
-| **TOTAL** | **44** | **✅** |
-
----
-
-**Document Version:** 1.0.0  
-**Last Updated:** April 20, 2026  
-**Status:** ✅ Production Ready
-
