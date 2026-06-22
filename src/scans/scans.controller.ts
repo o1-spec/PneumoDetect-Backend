@@ -220,5 +220,29 @@ export class ScansController {
       scan,
     };
   }
+
+  /**
+   * PATCH /scans/:id
+   * Update scan notes or result
+   * - Only allows owner doctor or admin
+   */
+  @Patch(':id')
+  async updateScan(
+    @Param('id') scanId: string,
+    @Body() updateScanDto: { result?: string; notes?: string },
+    @CurrentUser() user: any,
+  ) {
+    const scan = await this.scansService.updateScan(
+      scanId,
+      updateScanDto,
+      user.id,
+      user.role,
+    );
+
+    return {
+      message: 'Scan updated successfully',
+      scan,
+    };
+  }
 }
 

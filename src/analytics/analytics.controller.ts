@@ -22,6 +22,15 @@ export class AnalyticsController {
   }
 
   /**
+   * GET /analytics/dashboard
+   * Get unified dashboard metrics matching the frontend DashboardMetrics interface
+   */
+  @Get('dashboard')
+  async getDashboard(@CurrentUser() user: any): Promise<any> {
+    return this.analyticsService.getDashboardMetrics(user.id, user.role);
+  }
+
+  /**
    * GET /analytics/scans/results
    * Get scan results breakdown for charts
    * - Returns count of each result type (PNEUMONIA, NORMAL, CONCERNS)

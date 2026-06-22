@@ -197,6 +197,34 @@ export class UsersController {
   async skipOnboarding(@CurrentUser() user: any) {
     return this.onboardingService.skipOnboarding(user.id);
   }
+
+  /**
+   * Get user activity history (scans, notifications, login logs)
+   * GET /users/activity
+   */
+  @Get('activity')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access_token')
+  @ApiOperation({ summary: 'Get current user full activity logs including login history' })
+  @ApiResponse({ status: 200, description: 'User activity logs retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getActivityHistory(@CurrentUser() user: any) {
+    return this.usersService.getActivityHistory(user.id);
+  }
+
+  /**
+   * Get login history logs
+   * GET /users/activity/login
+   */
+  @Get('activity/login')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access_token')
+  @ApiOperation({ summary: 'Get current user login history records' })
+  @ApiResponse({ status: 200, description: 'Login history list retrieved' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getLoginHistory(@CurrentUser() user: any) {
+    return this.usersService.getLoginHistory(user.id);
+  }
 }
 
 

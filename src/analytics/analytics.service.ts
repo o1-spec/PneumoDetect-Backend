@@ -339,5 +339,154 @@ export class AnalyticsService {
       topPatients: topPatientsFormatted,
     };
   }
+
+  /**
+   * Get complete dashboard metrics matching the frontend DashboardMetrics structure
+   */
+  async getDashboardMetrics(userId: string, userRole: string): Promise<any> {
+    const whereClause = this.buildWhereClause(userId, userRole);
+
+    const totalScans = await this.prisma.scan.count({ where: whereClause });
+
+    let totalPatients = 0;
+    if (userRole === 'ADMIN') {
+      totalPatients = await this.prisma.patient.count();
+    } else {
+      const patientIds = await this.prisma.scan.groupBy({
+        by: ['patientId'],
+        where: whereClause,
+      });
+      totalPatients = patientIds.length;
+    }
+
+    const pneumoniaDetected = await this.prisma.scan.count({
+      where: { ...whereClause, result: 'PNEUMONIA', status: 'COMPLETED' },
+    });
+    const normalScans = await this.prisma.scan.count({
+      where: { ...whereClause, result: 'NORMAL', status: 'COMPLETED' },
+    });
+
+    const scansWithConfidence = await this.prisma.scan.findMany({
+      where: {
+        ...whereClause,
+        status: 'COMPLETED',
+        confidence: { not: null },
+      },
+      select: { confidence: true },
+    });
+    const averageConfidence = scansWithConfidence.length > 0
+      ? scansWithConfidence.reduce((sum, s) => sum + s.confidence!, 0) / scansWithConfidence.length
+      : 0;
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const getMetricsForPeriod = async (startDate: Date) => {
+      const scansCount = await this.prisma.scan.count({
+        where: { ...whereClause, createdAt: { gte: startDate } },
+      });
+      const pneumoniaCount = await this.prisma.scan.count({
+        where: { ...whereClause, result: 'PNEUMONIA', status: 'COMPLETED', createdAt: { gte: startDate } },
+      });
+      const normalCount = await this.prisma.scan.count({
+        where: { ...whereClause, result: 'NORMAL', status: 'COMPLETED', createdAt: { gte: startDate } },
+      });
+      return { scans: scansCount, pneumonia: pneumoniaCount, normal: normalCount };
+    };
+
+    const todayMetrics = await getMetricsForPeriod(startOfToday);
+    const thisWeekMetrics = await getMetricsForPeriod(startOfWeek);
+    const thisMonthMetrics = await getMetricsForPeriod(startOfMonth);
+
+    const recentScansRaw = await this.prisma.scan.findMany({
+      where: whereClause,
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      include: {
+        patient: {
+          select: {
+            id: true,
+            idNumber: true,
+            name: true,
+            age: true,
+            gender: true,
+          },
+        },
+        clinician: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    const recentScans = recentScansRaw.map(scan => ({
+      id: scan.id,
+      imageUrl: scan.imageUrl,
+      heatmapUrl: scan.heatmapUrl,
+      status: scan.status,
+      result: scan.result,
+      confidence: scan.confidence,
+      createdAt: scan.createdAt,
+      updatedAt: scan.updatedAt,
+      patientId: scan.patientId,
+      patient: scan.patient,
+      clinicianId: scan.clinicianId,
+      clinician: scan.clinician,
+    }));
+
+    const topPatientsRaw = await this.prisma.patient.findMany({
+      where: userRole === 'ADMIN' ? {} : {
+        scans: {
+          some: {
+            clinicianId: userId,
+          },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        scans: {
+          where: whereClause,
+          select: {
+            result: true,
+          },
+        },
+      },
+    });
+
+    const topPatients = topPatientsRaw
+      .map(p => {
+        const scanCount = p.scans.length;
+        const pneumoniaDetectedCount = p.scans.filter(s => s.result === 'PNEUMONIA').length;
+        return {
+          id: p.id,
+          name: p.name,
+          scanCount,
+          pneumoniaDetected: pneumoniaDetectedCount,
+        };
+      })
+      .sort((a, b) => b.scanCount - a.scanCount)
+      .slice(0, 10);
+
+    return {
+      totalScans,
+      totalPatients,
+      pneumoniaDetected,
+      normalScans,
+      accuracyRate: totalScans > 0 ? parseFloat(((normalScans + pneumoniaDetected) / totalScans * 100).toFixed(2)) : 100,
+      averageConfidence: parseFloat(averageConfidence.toFixed(4)),
+      todayMetrics,
+      thisWeekMetrics,
+      thisMonthMetrics,
+      recentScans,
+      topPatients,
+    };
+  }
 }
 

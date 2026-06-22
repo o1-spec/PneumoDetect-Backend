@@ -554,6 +554,64 @@ export class ScansService {
   }
 
   /**
+   * Update scan fields (clinician notes or result diagnosis)
+   * - Only allows owner clinician or admin
+   */
+  async updateScan(
+    scanId: string,
+    updateDto: { result?: string; notes?: string },
+    userId: string,
+    userRole: string,
+  ): Promise<any> {
+    const scan = await this.prisma.scan.findUnique({
+      where: { id: scanId },
+    });
+
+    if (!scan) {
+      throw new NotFoundException(`Scan with ID ${scanId} not found`);
+    }
+
+    if (userRole !== 'ADMIN' && scan.clinicianId !== userId) {
+      throw new ForbiddenException('You do not have permission to update this scan');
+    }
+
+    const dataToUpdate: any = {};
+    if (updateDto.notes !== undefined) {
+      dataToUpdate.clinicianNotes = updateDto.notes;
+    }
+    if (updateDto.result !== undefined) {
+      if (['PNEUMONIA', 'NORMAL', 'CONCERNS'].includes(updateDto.result)) {
+        dataToUpdate.result = updateDto.result as Result;
+      } else {
+        throw new BadRequestException(`Invalid scan result: ${updateDto.result}`);
+      }
+    }
+
+    const updatedScan = await this.prisma.scan.update({
+      where: { id: scanId },
+      data: dataToUpdate,
+      include: {
+        patient: true,
+        clinician: true,
+      },
+    });
+
+    return {
+      id: updatedScan.id,
+      imageUrl: updatedScan.imageUrl,
+      heatmapUrl: updatedScan.heatmapUrl,
+      result: updatedScan.result,
+      confidence: updatedScan.confidence,
+      status: updatedScan.status,
+      createdAt: updatedScan.createdAt,
+      analyzedAt: updatedScan.analyzedAt,
+      clinicianNotes: updatedScan.clinicianNotes,
+      patientNotes: updatedScan.patientNotes,
+      doctorName: updatedScan.clinician?.name || 'Unknown',
+    };
+  }
+
+  /**
    * Generate recommendations based on scan result
    */
   private generateRecommendations(result: Result | null): string[] {

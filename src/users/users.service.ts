@@ -459,5 +459,88 @@ export class UsersService {
       updatedAt: updated.updatedAt,
     };
   }
+
+  /**
+   * Get complete user activity history (recent scans, notifications, logins)
+   */
+  async getActivityHistory(userId: string): Promise<any> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        scans: {
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+          include: {
+            patient: {
+              select: {
+                name: true,
+                idNumber: true,
+              },
+            },
+          },
+        },
+        notifications: {
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        },
+        loginHistory: {
+          orderBy: { loginAt: 'desc' },
+          take: 20,
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return {
+      recentScans: user.scans.map(scan => ({
+        id: scan.id,
+        imageUrl: scan.imageUrl,
+        heatmapUrl: scan.heatmapUrl,
+        result: scan.result,
+        confidence: scan.confidence,
+        status: scan.status,
+        createdAt: scan.createdAt,
+        updatedAt: scan.updatedAt,
+        patientName: scan.patient.name,
+      })),
+      recentNotifications: user.notifications.map(notif => ({
+        id: notif.id,
+        title: notif.title,
+        message: notif.message,
+        type: notif.type,
+        createdAt: notif.createdAt,
+        isRead: notif.isRead,
+      })),
+      loginHistory: user.loginHistory.map(login => ({
+        id: login.id,
+        loginAt: login.loginAt,
+        logoutAt: login.logoutAt,
+        ipAddress: login.ipAddress,
+        userAgent: login.userAgent,
+      })),
+      profileUpdatedAt: user.updatedAt.toISOString(),
+    };
+  }
+
+  /**
+   * Get user login history logs
+   */
+  async getLoginHistory(userId: string): Promise<any[]> {
+    const history = await this.prisma.loginHistory.findMany({
+      where: { userId },
+      orderBy: { loginAt: 'desc' },
+      take: 50,
+    });
+    return history.map(login => ({
+      id: login.id,
+      loginAt: login.loginAt,
+      logoutAt: login.logoutAt,
+      ipAddress: login.ipAddress,
+      userAgent: login.userAgent,
+    }));
+  }
 }
 
