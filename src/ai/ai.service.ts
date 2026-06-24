@@ -60,7 +60,7 @@ export class AiService {
       return {
         result: prediction.result,
         confidence: prediction.confidence,
-        rawPrediction: prediction.raw_prediction,
+        rawPrediction: prediction.raw_predictions?.ensemble_average ?? prediction.raw_prediction ?? prediction.confidence,
         heatmap: prediction.heatmap,
       };
     } catch (error) {
