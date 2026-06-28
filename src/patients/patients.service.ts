@@ -20,7 +20,10 @@ export class PatientsService {
    * Create a new patient
    * Ensures idNumber is unique
    */
-  async createPatient(createPatientDto: CreatePatientDto): Promise<PatientResponseDto> {
+  async createPatient(
+    createPatientDto: CreatePatientDto,
+    creatorId?: string,
+  ): Promise<PatientResponseDto> {
     const { idNumber, name, age, gender } = createPatientDto;
 
 
@@ -51,15 +54,17 @@ export class PatientsService {
 
 
 
-    try {
-      await this.notificationsService.createNotification({
-        userId: 'admin', // This should be the doctor's ID in a real system
-        title: 'Patient Added',
-        message: `New patient ${name} (ID: ${idNumber}) has been added to the system.`,
-        type: 'USER',
-      });
-    } catch (error) {
-      console.error('Failed to create patient notification:', error);
+    if (creatorId) {
+      try {
+        await this.notificationsService.createNotification({
+          userId: creatorId,
+          title: 'Patient Added',
+          message: `New patient ${name} (ID: ${idNumber}) has been added to the system.`,
+          type: 'USER',
+        });
+      } catch (error) {
+        console.error('Failed to create patient notification:', error);
+      }
     }
 
     return new PatientResponseDto(patient);

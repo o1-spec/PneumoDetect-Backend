@@ -30,8 +30,9 @@ export class PatientsController {
   @Post()
   async createPatient(
     @Body() createPatientDto: CreatePatientDto,
+    @CurrentUser() user: any,
   ): Promise<PatientResponseDto> {
-    return this.patientsService.createPatient(createPatientDto);
+    return this.patientsService.createPatient(createPatientDto, user.id);
   }
 
   /**

@@ -162,7 +162,7 @@ export class ScansService {
       throw new BadRequestException(`Failed to process scan: ${error.message}`);
     }
 
-    let heatmapUrl = processScanDto.heatmapUrl || null;
+    let heatmapUrl = processScanDto?.heatmapUrl || null;
     if (predictionResult.heatmap) {
       try {
         const heatmapBuffer = Buffer.from(predictionResult.heatmap, 'base64');
