@@ -30,5 +30,8 @@ export class ScanResponseDto {
 
   constructor(partial: Partial<ScanResponseDto>) {
     Object.assign(this, partial);
+    if (this.confidence !== null && this.confidence !== undefined && this.confidence <= 1.0) {
+      this.confidence = Math.round(this.confidence * 10000) / 100;
+    }
   }
 }
